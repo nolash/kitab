@@ -120,33 +120,28 @@ pub fn handle_parse_match(metadata: &mut MetaData, triple: Triple) -> Result<(),
     let field = triple.predicate.iri;
     match field {
         "https://purl.org/dc/terms/title" => {
-            let title = triple.object.to_string();
-            let l = title.len()-1;
-            metadata.set_title(&title[1..l]);
+            let title = triple.object.to_string().replace("\"", "");
+            metadata.set_title(title.as_str());
             info!("found title: {}", title);
         },
         "https://purl.org/dc/terms/creator" => {
-            let author = triple.object.to_string();
-            let l = author.len()-1;
-            metadata.set_author(&author[1..l]);
+            let author = triple.object.to_string().replace("\"", "");
+            metadata.set_author(author.as_str());
             info!("found author: {}", author);
         },
         "https://purl.org/dc/terms/subject" => {
-            let mut subject = triple.object.to_string();
-            let l = subject.len()-1;
-            metadata.set_subject(&subject[1..l]); //.as_str());
+            let mut subject = triple.object.to_string().replace("\"", "");
+            metadata.set_subject(subject.as_str());
             info!("found subject: {}", subject);
         },
         "https://purl.org/dc/terms/language" => {
-            let mut lang = triple.object.to_string();
-            let l = lang.len()-1;
-            metadata.set_language(&lang[1..l]);
+            let mut lang = triple.object.to_string().replace("\"", "");
+            metadata.set_language(lang.as_str());
             info!("found language: {}", lang);
         },
         "https://purl.org/dc/terms/type" => {
-            let mut typ = triple.object.to_string();
-            let l = typ.len()-1;
-            metadata.set_typ(&typ[1..l]);
+            let mut typ = triple.object.to_string().replace("\"", "");
+            metadata.set_typ(typ.as_str());
             info!("found entry type: {}", typ);
         },
         "https://purl.org/dc/terms/MediaType" => {
