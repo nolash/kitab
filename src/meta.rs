@@ -2,6 +2,11 @@ use std::path;
 use std::fmt;
 use xattr;
 use hex;
+use mime::{
+    Mime
+};
+use unic_langid_impl::LanguageIdentifier;
+use std::str::FromStr;
 
 use crate::dc::DCMetaData;
 
@@ -34,11 +39,7 @@ pub struct MetaData {
 impl MetaData {
 
     pub fn new(title: &str, author: &str, digest: Vec<u8>, filename: Option<FileName>) -> MetaData {
-        let dc:DCMetaData = DCMetaData{
-            title: String::from(title),
-            author: String::from(author),
-            subject: None,
-        };
+        let dc = DCMetaData::new(title, author);
  
         MetaData{
                 dc: dc,
@@ -60,6 +61,42 @@ impl MetaData {
         self.dc.author.clone()
     }
 
+    pub fn set_subject(&mut self, v: &str) {
+        self.dc.subject = Some(String::from(v));
+    }
+
+    pub fn subject(&self) -> Option<String> {
+        return self.dc.subject.clone();
+    }
+
+    pub fn set_mime(&mut self, m: Mime) {
+        self.dc.mime = Some(m);
+    }
+
+    pub fn set_mime_str(&mut self, s: &str) {
+        match Mime::from_str(s) {
+            Ok(v) => {
+                self.set_mime(v);
+            },
+            Err(e) => {
+                panic!("invalid mime");
+            },
+        };
+    }
+
+    pub fn mime(&self) -> Option<Mime> {
+        self.dc.mime.clone()
+    }
+
+    pub fn set_language(&mut self, s: &str) {
+        let v = s.parse().unwrap();
+        self.dc.language = Some(v);
+    }
+
+    pub fn language(&self) -> Option<LanguageIdentifier> {
+        self.dc.language.clone()
+    }
+
     pub fn fingerprint(&self) -> String {
         hex::encode(&self.digest)
     }
@@ -68,7 +105,7 @@ impl MetaData {
 
         let mut title: String = String::new();
         let mut author: String = String::new();
-        let mut subject: String = String::new();
+        //let mut subject: String = String::new();
         let filename: FileName; 
 
         let title_src = xattr::get(filepath, "user.dcterms:title").unwrap();
@@ -95,7 +132,35 @@ impl MetaData {
             .into_string()
             .unwrap();
 
-        MetaData::new(title.as_str(), author.as_str(), vec!(), Some(filename))
+        let mut metadata = MetaData::new(title.as_str(), author.as_str(), vec!(), Some(filename));
+
+        match xattr::get(filepath, "user.dcterms:subject") {
+            Ok(v) => {
+                match v {
+                    Some(v) => {
+                        let s = std::str::from_utf8(&v).unwrap();
+                        metadata.set_subject(s);
+                    },
+                    None => {},
+                }
+            },
+            _ => {},
+        };
+
+        match xattr::get(filepath, "user.dcterms:MediaType") {
+            Ok(v) => {
+                match v {
+                    Some(v) => {
+                        let s = std::str::from_utf8(&v).unwrap();
+                        metadata.set_mime_str(s);
+                    },
+                    None => {},
+                }
+            },
+            _ => {},
+        }
+
+        metadata
     }
 }
 
