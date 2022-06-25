@@ -1,4 +1,4 @@
-#![crate_name = "katab"]
+#![crate_name = "kitab"]
 
 pub mod meta;
 

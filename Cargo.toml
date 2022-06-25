@@ -1,5 +1,5 @@
 [package]
-name = "katab"
+name = "kitab"
 version = "0.0.1"
 authors = ["nolash <dev@holbrook.no>"]
 edition = "2021"
