@@ -230,6 +230,10 @@ impl MetaData {
 
         metadata
     }
+
+    pub fn to_xattr(&self, filepath: &Path) -> Result<(), std::io::Error> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]
