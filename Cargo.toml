@@ -1,0 +1,28 @@
+[package]
+name = "katab"
+version = "0.0.1"
+authors = ["nolash <dev@holbrook.no>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+xattr = "0.2.2"
+#inotify = "0.8.0"
+regex = "1.5.5"
+rio_turtle = "~0.7.1"
+rio_api = "~0.7.1"
+hex = "^0.4"
+
+[dependencies.biblatex]
+biblatex = "0.5.0"
+optional = true
+
+#[dependencies.rdf]
+#rio_turtle = "~0.7.1"
+#rio_api = "~0.7.1"
+#optional = true
+
+[features]
+#dump_rdf = ["rdf"]
+#dump_bibtex = ["biblatex"]
