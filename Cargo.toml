@@ -17,6 +17,9 @@ mime = "^0.3.13"
 unic-langid-impl = "^0.9.0"
 biblatex = "^0.6.2"
 sha2 = "^0.10.2"
+log = "^0.4"
+env_logger = "^0.9"
+urn = "^0.4.0"
 
 #[dependencies.rdf]
 #rio_turtle = "~0.7.1"

@@ -42,20 +42,47 @@ impl MetaData {
     pub fn new(title: &str, author: &str, typ: EntryType, digest: Vec<u8>, filename: Option<FileName>) -> MetaData {
         let dc = DCMetaData::new(title, author, typ);
 
-        let sz = Sha512::output_size();
-        if digest.len() != sz {
-            panic!("wrong digest size, must be {}", sz);
-        }
-
-        MetaData{
+        let mut m = MetaData{
                 dc: dc,
-                digest: digest,
+                digest: vec!(),
                 comment: String::new(),
                 //local_name: filepath.to_str().unwrap().to_string(),
                 local_name: filename,
                 publish_date: (0, 0, 0),
                 retrieval_timestamp: 0,
+        };
+
+        m.set_fingerprint(digest);
+        m
+    }
+
+    pub fn empty() -> MetaData {
+        let dc = DCMetaData::new("", "", EntryType::Unknown(String::new()));
+        MetaData{
+                dc: dc,
+                digest: vec!(),
+                comment: String::new(),
+                //local_name: filepath.to_str().unwrap().to_string(),
+                local_name: None,
+                publish_date: (0, 0, 0),
+                retrieval_timestamp: 0,
         }
+    }
+
+    pub fn set_title(&mut self, title: &str) {
+        self.dc.title = String::from(title);
+    }
+
+    pub fn set_author(&mut self, author: &str) {
+        self.dc.title = String::from(author);
+    }
+
+    pub fn set_fingerprint(&mut self, fingerprint: Vec<u8>) {
+        let sz = Sha512::output_size();
+        if fingerprint.len() != sz {
+            panic!("wrong digest size, must be {}", sz);
+        }
+        self.digest = fingerprint;
     }
 
     pub fn title(&self) -> String {
@@ -64,6 +91,10 @@ impl MetaData {
 
     pub fn author(&self) -> String {
         self.dc.author.clone()
+    }
+
+    pub fn set_typ(&mut self, typ: &str) {
+        self.dc.typ = EntryType::from_str(typ).unwrap();
     }
 
     pub fn typ(&self) -> EntryType {
