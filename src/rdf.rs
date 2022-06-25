@@ -36,6 +36,12 @@ pub fn write_rdf(entry: &MetaData, w: impl Write) -> Result<usize, std::io::Erro
         predicate: NamedNode { iri: "https://purl.org/dc/terms/creator" }.into(),
         object: Literal::Simple { value: entry.author().as_str() }.into(),
     });
+    let typ = entry.typ().to_string();
+    tfmt.format(&Triple{
+        subject: urn,
+        predicate: NamedNode { iri: "https://purl.org/dc/terms/type" }.into(),
+        object: Literal::Simple { value: typ.as_str() }.into(),
+    });
     match entry.subject() {
         Some(v) => {
             tfmt.format(&Triple{
@@ -80,16 +86,19 @@ mod tests {
     use super::write_rdf;
     use super::MetaData;
     use std::io::stdout;
+    use std::default::Default;
+    use biblatex::EntryType;
 
     #[test]
     fn test_write() {
-        let mut m = MetaData::new("foo", "bar", vec!(0x2a), None);
+        let mut digest = Vec::with_capacity(64);
+        digest.resize(64, 0x2a);
+        let mut m = MetaData::new("foo", "bar", EntryType::Article, Vec::from(digest), None);
         m.set_subject("baz");
         m.set_mime_str("foo/bar");
         m.set_language("en-US");
         //let v =  Vec::default();
         let v = stdout();
         let r = write_rdf(&m, v);
-        println!("");
     }
 }

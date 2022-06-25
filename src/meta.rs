@@ -5,12 +5,17 @@ use hex;
 use mime::{
     Mime
 };
+use sha2::{
+    Sha512,
+    Digest,
+};
 use unic_langid_impl::LanguageIdentifier;
+use biblatex::EntryType;
 use std::str::FromStr;
 
 use crate::dc::DCMetaData;
 
-pub type Digest = Vec<u8>;
+//pub type Digest = Vec<u8>;
 
 pub type PublishDate = (u8, u8, u32);
 
@@ -18,18 +23,9 @@ pub type FileName = String;
 
 pub type FilePath = String;
 
-enum ResourceType {
-    Unknown,
-    Article,
-    Whitepaper,
-    Book,
-    Report,
-}
-
 pub struct MetaData {
     dc: DCMetaData,
-    typ: ResourceType,
-    digest: Digest,
+    digest: Vec<u8>,
     local_name: Option<FileName>,
     comment: String,
     publish_date: PublishDate,
@@ -37,14 +33,17 @@ pub struct MetaData {
 }
 
 impl MetaData {
+    pub fn new(title: &str, author: &str, typ: EntryType, digest: Vec<u8>, filename: Option<FileName>) -> MetaData {
+        let dc = DCMetaData::new(title, author, typ);
 
-    pub fn new(title: &str, author: &str, digest: Vec<u8>, filename: Option<FileName>) -> MetaData {
-        let dc = DCMetaData::new(title, author);
- 
+        let sz = Sha512::output_size();
+        if digest.len() != sz {
+            panic!("wrong digest size, must be {}", sz);
+        }
+
         MetaData{
                 dc: dc,
-                typ: ResourceType::Unknown,
-                digest: vec!(),
+                digest: digest,
                 comment: String::new(),
                 //local_name: filepath.to_str().unwrap().to_string(),
                 local_name: filename,
@@ -59,6 +58,10 @@ impl MetaData {
 
     pub fn author(&self) -> String {
         self.dc.author.clone()
+    }
+
+    pub fn typ(&self) -> EntryType {
+        self.dc.typ.clone()
     }
 
     pub fn set_subject(&mut self, v: &str) {
@@ -105,7 +108,7 @@ impl MetaData {
 
         let mut title: String = String::new();
         let mut author: String = String::new();
-        //let mut subject: String = String::new();
+        let mut typ: EntryType = EntryType::Unknown(String::new());
         let filename: FileName; 
 
         let title_src = xattr::get(filepath, "user.dcterms:title").unwrap();
@@ -132,7 +135,16 @@ impl MetaData {
             .into_string()
             .unwrap();
 
-        let mut metadata = MetaData::new(title.as_str(), author.as_str(), vec!(), Some(filename));
+        let typ_src = xattr::get(filepath, "user.dcterms:type").unwrap();
+        match typ_src {
+            Some(v) => {
+                let s = std::str::from_utf8(&v).unwrap();
+                typ = EntryType::new(s);
+            },
+            None => {},
+        }
+
+        let mut metadata = MetaData::new(title.as_str(), author.as_str(), typ, vec!(), Some(filename));
 
         match xattr::get(filepath, "user.dcterms:subject") {
             Ok(v) => {
