@@ -9,9 +9,15 @@ use sha2::{
     Sha512,
     Digest,
 };
+use std::fs::{
+    File,
+    metadata,
+};
+use std::io::Read;
 use unic_langid_impl::LanguageIdentifier;
 use biblatex::EntryType;
 use std::str::FromStr;
+use std::os::linux::fs::MetadataExt;
 
 use crate::dc::DCMetaData;
 
@@ -104,12 +110,36 @@ impl MetaData {
         hex::encode(&self.digest)
     }
 
+    fn digest_from_path(filepath: &path::Path) -> Vec<u8> {
+        let mut h = Sha512::new();
+        let st = metadata(filepath).unwrap();
+        let bs: u64 = st.st_blksize();
+        let sz: u64 = st.st_size();
+        let mut b: Vec<u8> = vec!(0; bs as usize);
+        let mut f = File::open(filepath).unwrap();
+        let mut i: usize = 0;
+        while i < sz as usize {
+            let c = f.read(&mut b).unwrap();
+            h.update(&b[..c]);
+            i += c;
+        }
+        h.finalize().to_vec()
+    }
+
     pub fn from_xattr(filepath: &path::Path) -> MetaData {
 
         let mut title: String = String::new();
         let mut author: String = String::new();
         let mut typ: EntryType = EntryType::Unknown(String::new());
         let filename: FileName; 
+
+        let digest = MetaData::digest_from_path(filepath);
+
+        filename = filepath.file_name()
+            .unwrap()
+            .to_os_string()
+            .into_string()
+            .unwrap();
 
         let title_src = xattr::get(filepath, "user.dcterms:title").unwrap();
         match title_src {
@@ -129,11 +159,6 @@ impl MetaData {
             None => {},
         }
 
-        filename = filepath.file_name()
-            .unwrap()
-            .to_os_string()
-            .into_string()
-            .unwrap();
 
         let typ_src = xattr::get(filepath, "user.dcterms:type").unwrap();
         match typ_src {
@@ -144,7 +169,7 @@ impl MetaData {
             None => {},
         }
 
-        let mut metadata = MetaData::new(title.as_str(), author.as_str(), typ, vec!(), Some(filename));
+        let mut metadata = MetaData::new(title.as_str(), author.as_str(), typ, digest, Some(filename));
 
         match xattr::get(filepath, "user.dcterms:subject") {
             Ok(v) => {
@@ -187,5 +212,6 @@ mod tests {
         let meta = MetaData::from_xattr(s);
         assert_eq!(meta.dc.title, "Bitcoin: A Peer-to-Peer Electronic Cash System");
         assert_eq!(meta.dc.author, "Satoshi Nakamoto");
+        assert_eq!(meta.fingerprint(), String::from("2ac531ee521cf93f8419c2018f770fbb42c65396178e079a416e7038d3f9ab9fc2c35c4d838bc8b5dd68f4c13759fe9cdf90a46528412fefe1294cb26beabf4e"));
     }
 }

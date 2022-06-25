@@ -16,7 +16,7 @@ use rio_api::formatter::TriplesFormatter;
 use crate::meta::MetaData;
 
 
-pub fn write_rdf(entry: &MetaData, w: impl Write) -> Result<usize, std::io::Error> {
+pub fn write(entry: &MetaData, w: impl Write) -> Result<usize, std::io::Error> {
     let mut tfmt = TurtleFormatter::new(w);
     
     let urn_str = format!("URN:sha512:{}", entry.fingerprint());
@@ -83,7 +83,7 @@ pub fn write_rdf(entry: &MetaData, w: impl Write) -> Result<usize, std::io::Erro
 
 #[cfg(test)]
 mod tests {
-    use super::write_rdf;
+    use super::write;
     use super::MetaData;
     use std::io::stdout;
     use std::default::Default;
@@ -97,8 +97,7 @@ mod tests {
         m.set_subject("baz");
         m.set_mime_str("foo/bar");
         m.set_language("en-US");
-        //let v =  Vec::default();
         let v = stdout();
-        let r = write_rdf(&m, v);
+        let r = write(&m, v);
     }
 }
