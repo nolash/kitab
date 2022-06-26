@@ -24,6 +24,9 @@ use biblatex::EntryType;
 use std::str::FromStr;
 use std::os::linux::fs::MetadataExt;
 
+#[cfg(feature = "magic")]
+use tree_magic;
+
 use crate::dc::{
     DCMetaData,
     DC_XATTR_TITLE,
@@ -260,6 +263,9 @@ impl MetaData {
             _ => {},
         }
 
+        #[cfg(feature = "magic")]
+        metadata.set_mime_magic(filepath);
+
         metadata
     }
 
@@ -343,6 +349,21 @@ impl MetaData {
         }
     }
 
+    #[cfg(feature = "magic")]
+    pub fn set_mime_magic(&mut self, path: &path::Path) {
+        if self.mime() == None {
+            let mime = tree_magic::from_filepath(path);
+            self.set_mime_str(&mime);
+            info!("magic set mime {}", mime);
+        }
+    }
+
+    pub fn from_path(p: &path::Path) -> Result<MetaData, std::io::Error> {
+        let f = File::open(&p).unwrap();
+        let mut m = MetaData::from_file(f).unwrap();
+        Ok(m)
+    }
+
     pub fn from_file(f: File) -> Result<MetaData, std::io::Error> {
         let mut m = MetaData::empty();
         //let f = File::open(path).unwrap();
@@ -381,7 +402,10 @@ mod tests {
     use std::path;
     use tempfile::NamedTempFile;
     use biblatex::EntryType;
-    use std::fs::File;
+    use std::fs::{
+        File,
+        write
+    };
     use env_logger;
 
     #[test]
@@ -420,8 +444,6 @@ mod tests {
 
     #[test]
     fn test_metadata_file() {
-        env_logger::init();
-
         let f = File::open("testdata/meta.txt").unwrap();
         let m_check = MetaData::from_file(f).unwrap();
         assert_eq!(m_check.title(), "foo");
@@ -430,5 +452,21 @@ mod tests {
         assert_eq!(m_check.subject().unwrap(), "baz");
         assert_eq!(m_check.mime().unwrap(), "text/plain");
         assert_eq!(m_check.language().unwrap(), "nb-NO");
+    }
+
+    #[test]
+    fn test_metadata_xattr_magic() {
+        let s = path::Path::new("testdata/bitcoin.pdf");
+        let meta = MetaData::from_xattr(s);
+
+        #[cfg(feature = "magic")]
+        {
+            assert_eq!(meta.mime().unwrap(), "application/pdf");
+            let f = NamedTempFile::new_in(".").unwrap();
+            let fp = f.path();
+            write(&f, &[0, 1, 2, 3]);
+            let meta_empty = MetaData::from_xattr(fp);
+            assert_eq!(meta_empty.mime().unwrap(), "application/octet-stream"); 
+        }
     }
 }

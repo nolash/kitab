@@ -213,8 +213,6 @@ mod tests {
 
     #[test]
     fn test_turtle_read() {
-        env_logger::init();
-
         let f = File::open("testdata/meta.ttl").unwrap();
         read(&f);
     }
