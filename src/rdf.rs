@@ -33,7 +33,19 @@ use log::{
 
 use crate::meta::MetaData;
 
+use crate::dc::{
+    DC_IRI_TITLE,
+    DC_IRI_CREATOR,
+    DC_IRI_SUBJECT,
+    DC_IRI_LANGUAGE,
+    DC_IRI_TYPE,
+    DC_IRI_MEDIATYPE,
+};
 
+pub enum RdfError {
+    UrnError(UrnError),
+    HashMismatchError,
+}
 
 pub fn write(entry: &MetaData, w: impl Write) -> Result<usize, std::io::Error> {
     let mut tfmt = TurtleFormatter::new(w);
@@ -47,37 +59,37 @@ pub fn write(entry: &MetaData, w: impl Write) -> Result<usize, std::io::Error> {
 
     tfmt.format(&Triple{
         subject: urn,
-        predicate: NamedNode { iri: "https://purl.org/dc/terms/title" }.into(),
+        predicate: NamedNode { iri: DC_IRI_TITLE }.into(),
         object: Literal::Simple { value: entry.title().as_str() }.into(),
     });
     tfmt.format(&Triple{
         subject: urn,
-        predicate: NamedNode { iri: "https://purl.org/dc/terms/creator" }.into(),
+        predicate: NamedNode { iri: DC_IRI_CREATOR }.into(),
         object: Literal::Simple { value: entry.author().as_str() }.into(),
     });
     let typ = entry.typ().to_string();
     tfmt.format(&Triple{
         subject: urn,
-        predicate: NamedNode { iri: "https://purl.org/dc/terms/type" }.into(),
+        predicate: NamedNode { iri: DC_IRI_TYPE }.into(),
         object: Literal::Simple { value: typ.as_str() }.into(),
     });
     match entry.subject() {
         Some(v) => {
             tfmt.format(&Triple{
                 subject: urn,
-                predicate: NamedNode { iri: "https://purl.org/dc/terms/subject" }.into(),
+                predicate: NamedNode { iri: DC_IRI_SUBJECT }.into(),
                 object: Literal::Simple { value: v.as_str() }.into(),
             });
         },
         _ => (),
     };
 
-     match entry.mime() {
+    match entry.mime() {
         Some(v) => {
             let m: String = v.to_string();
             tfmt.format(&Triple{
                 subject: urn,
-                predicate: NamedNode { iri: "https://purl.org/dc/terms/MediaType" }.into(),
+                predicate: NamedNode { iri: DC_IRI_MEDIATYPE }.into(),
                 object: Literal::Simple { value: m.as_str() }.into(),
             });
         },
@@ -89,7 +101,7 @@ pub fn write(entry: &MetaData, w: impl Write) -> Result<usize, std::io::Error> {
             let m: String = v.to_string();
             tfmt.format(&Triple{
                 subject: urn,
-                predicate: NamedNode { iri: "https://purl.org/dc/terms/language" }.into(),
+                predicate: NamedNode { iri: DC_IRI_LANGUAGE }.into(),
                 object: Literal::Simple { value: m.as_str() }.into(),
             });
         },
@@ -101,53 +113,54 @@ pub fn write(entry: &MetaData, w: impl Write) -> Result<usize, std::io::Error> {
 }
 
 
-pub fn handle_parse_match(metadata: &mut MetaData, triple: Triple) -> Result<(), UrnError> {
+fn handle_parse_match(metadata: &mut MetaData, triple: Triple) -> Result<(), RdfError> {
     let subject_iri = triple.subject.to_string();
     let l = subject_iri.len()-1;
     let subject = &subject_iri[1..l];
     let subject_urn = Urn::from_str(subject).unwrap();
     if subject_urn.nid() != "sha512" {
-        return Err(UrnError::InvalidNid);
+        return Err(RdfError::UrnError(UrnError::InvalidNid));
     }
 
+    let v = subject_urn.nss();
+    let b = hex::decode(&v).unwrap();
     if metadata.fingerprint().len() == 0 {
-        let v = subject_urn.nss();
-        let b = hex::decode(&v).unwrap();
         info!("setting fingerprint {}", v);
         metadata.set_fingerprint(b);
+    } else if metadata.fingerprint() != v {
+        return Err(RdfError::HashMismatchError);
     }
 
     let field = triple.predicate.iri;
     match field {
-        "https://purl.org/dc/terms/title" => {
+        DC_IRI_TITLE => {
             let title = triple.object.to_string().replace("\"", "");
             metadata.set_title(title.as_str());
             info!("found title: {}", title);
         },
-        "https://purl.org/dc/terms/creator" => {
+        DC_IRI_CREATOR => {
             let author = triple.object.to_string().replace("\"", "");
             metadata.set_author(author.as_str());
             info!("found author: {}", author);
         },
-        "https://purl.org/dc/terms/subject" => {
+        DC_IRI_SUBJECT => {
             let mut subject = triple.object.to_string().replace("\"", "");
             metadata.set_subject(subject.as_str());
             info!("found subject: {}", subject);
         },
-        "https://purl.org/dc/terms/language" => {
+        DC_IRI_LANGUAGE => {
             let mut lang = triple.object.to_string().replace("\"", "");
             metadata.set_language(lang.as_str());
             info!("found language: {}", lang);
         },
-        "https://purl.org/dc/terms/type" => {
+        DC_IRI_TYPE => {
             let mut typ = triple.object.to_string().replace("\"", "");
             metadata.set_typ(typ.as_str());
             info!("found entry type: {}", typ);
         },
-        "https://purl.org/dc/terms/MediaType" => {
-            let mut mime_type = triple.object.to_string();
-            let l = mime_type.len()-1;
-            metadata.set_mime_str(&mime_type[1..l]);
+        DC_IRI_MEDIATYPE => {
+            let mut mime_type = triple.object.to_string().replace("\"", "");
+            metadata.set_mime_str(mime_type.as_str());
             info!("found mime type: {}", mime_type);
         },
         _ => {
@@ -192,8 +205,9 @@ mod tests {
         let mut m = MetaData::new("foo", "bar", EntryType::Article, Vec::from(digest), None);
         m.set_subject("baz");
         m.set_mime_str("foo/bar");
-        m.set_language("en-US");
-        let v = stdout();
+        m.set_language("nb-NO");
+        //let v = stdout();
+        let mut v: Vec<u8> = vec!();
         let r = write(&m, v);
     }
 

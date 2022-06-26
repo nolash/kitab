@@ -13,15 +13,31 @@ use std::fs::{
     File,
     metadata,
 };
-use std::io::Read;
+use std::path::Path;
+use std::io::{
+    Read,
+    BufRead,
+    BufReader,
+};
 use unic_langid_impl::LanguageIdentifier;
 use biblatex::EntryType;
 use std::str::FromStr;
 use std::os::linux::fs::MetadataExt;
 
-use crate::dc::DCMetaData;
+use crate::dc::{
+    DCMetaData,
+    DC_XATTR_TITLE,
+    DC_XATTR_CREATOR,
+    DC_XATTR_SUBJECT,
+    DC_XATTR_LANGUAGE,
+    DC_XATTR_TYPE,
+    DC_XATTR_MEDIATYPE,
+};
 
-//pub type Digest = Vec<u8>;
+use log::{
+    debug,
+    info,
+};
 
 pub type PublishDate = (u8, u8, u32);
 
@@ -38,6 +54,10 @@ pub struct MetaData {
     retrieval_timestamp: u32,
 }
 
+pub fn check_xattr() {
+
+}
+
 impl MetaData {
     pub fn new(title: &str, author: &str, typ: EntryType, digest: Vec<u8>, filename: Option<FileName>) -> MetaData {
         let dc = DCMetaData::new(title, author, typ);
@@ -46,7 +66,6 @@ impl MetaData {
                 dc: dc,
                 digest: vec!(),
                 comment: String::new(),
-                //local_name: filepath.to_str().unwrap().to_string(),
                 local_name: filename,
                 publish_date: (0, 0, 0),
                 retrieval_timestamp: 0,
@@ -74,7 +93,7 @@ impl MetaData {
     }
 
     pub fn set_author(&mut self, author: &str) {
-        self.dc.title = String::from(author);
+        self.dc.author = String::from(author);
     }
 
     pub fn set_fingerprint(&mut self, fingerprint: Vec<u8>) {
@@ -228,18 +247,142 @@ impl MetaData {
             _ => {},
         }
 
+        match xattr::get(filepath, "user.dcterms:language") {
+            Ok(v) => {
+                match v {
+                    Some(v) => {
+                        let s = std::str::from_utf8(&v).unwrap();
+                        metadata.set_language(s);
+                    },
+                    None => {},
+                }
+            },
+            _ => {},
+        }
+
         metadata
     }
 
-    pub fn to_xattr(&self, filepath: &Path) -> Result<(), std::io::Error> {
+
+    pub fn to_xattr(&self, filepath: &path::Path) -> Result<(), std::io::Error> {
+        let filename = filepath.file_name()
+            .unwrap()
+            .to_os_string()
+            .into_string()
+            .unwrap();
+
+        xattr::set(filepath, DC_XATTR_TITLE, self.dc.title.as_bytes());
+        xattr::set(filepath, DC_XATTR_CREATOR, self.dc.author.as_bytes());
+        xattr::set(filepath, DC_XATTR_TYPE, self.dc.typ.to_string().as_bytes());
+
+        match &self.dc.language {
+            Some(v) => {
+                xattr::set(filepath, DC_XATTR_LANGUAGE, v.to_string().as_bytes());
+            },
+            _ => {},
+        };
+
+        match &self.dc.mime {
+            Some(v) => {
+                xattr::set(filepath, DC_XATTR_MEDIATYPE, v.to_string().as_bytes());
+            },
+            _ => {},
+        };
+
+        match &self.dc.subject {
+            Some(v) => {
+                xattr::set(filepath, DC_XATTR_SUBJECT, v.as_bytes());
+            },
+            _ => {},
+        };
+
         Ok(())
     }
+
+    fn process_predicate(&mut self, predicate: &str, object: &str) -> bool {
+        match predicate.to_lowercase().as_str() {
+            "title" => {
+                self.set_title(object);
+                info!("found title: {}", object);
+            },
+            "author" => {
+                self.set_author(object);
+                info!("found author: {}", object);
+            },
+            "subject" => {
+                self.set_subject(object);
+                info!("found subject: {}", object);
+            },
+            "typ" => {
+                self.set_typ(object);
+                info!("found typ: {}", object);
+            },
+            "language" => {
+                self.set_language(object);
+                info!("found language: {}", object);
+            },
+            "mime" => {
+                self.set_mime_str(object);
+                info!("found mime: {}", object);
+            },
+            _ => {
+                return false;
+            },
+        }
+        true
+    }
+
+    fn process_line(&mut self, s: &str) {
+        match s.split_once(":") {
+            Some((predicate, object_raw)) => {
+                let object = object_raw.trim();
+                self.process_predicate(predicate, object);
+            },
+            None => {
+            },
+        }
+    }
+
+    pub fn from_file(f: File) -> Result<MetaData, std::io::Error> {
+        let mut m = MetaData::empty();
+        //let f = File::open(path).unwrap();
+        let mut fb = BufReader::new(f);
+        loop {
+            let mut s = String::new();
+            match fb.read_line(&mut s) {
+                Ok(v) => {
+                    if v == 0 {
+                        break;
+                    }
+                    m.process_line(s.as_str());
+                },
+                Err(e) => {
+                    return Err(e);
+                },
+            }
+        }
+        Ok(m)
+    }
 }
+
+//impl FromStr for MetaData {
+//    type Err = std::io::Error;
+//
+//    fn from_str(s: &str) -> Result<MetaData, <MetaData as FromStr>::Err> {
+//        BufRead
+//        MetaData::empty();
+//        Ok(())
+//    }
+//}
 
 #[cfg(test)]
 mod tests {
     use super::MetaData;
     use std::path;
+    use tempfile::NamedTempFile;
+    use biblatex::EntryType;
+    use std::fs::File;
+    use env_logger;
 
     #[test]
     fn test_metadata_create() {
@@ -248,5 +391,44 @@ mod tests {
         assert_eq!(meta.dc.title, "Bitcoin: A Peer-to-Peer Electronic Cash System");
         assert_eq!(meta.dc.author, "Satoshi Nakamoto");
         assert_eq!(meta.fingerprint(), String::from("2ac531ee521cf93f8419c2018f770fbb42c65396178e079a416e7038d3f9ab9fc2c35c4d838bc8b5dd68f4c13759fe9cdf90a46528412fefe1294cb26beabf4e"));
+    }
+
+    #[test]
+    fn test_metadata_set() {
+        let digest_hex = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e";
+        let digest = hex::decode(&digest_hex).unwrap();
+
+        let f = NamedTempFile::new_in(".").unwrap();
+        let fp = f.path();
+        let fps = String::from(fp.to_str().unwrap());
+
+        let mut m = MetaData::new("foo", "bar", EntryType::Article, digest, Some(fps));
+        m.set_subject("baz");
+        m.set_mime_str("foo/bar");
+        m.set_language("nb-NO");
+        m.to_xattr(fp);
+        
+        let m_check = MetaData::from_xattr(fp);
+        assert_eq!(m_check.title(), "foo");
+        assert_eq!(m_check.author(), "bar");
+        assert_eq!(m_check.fingerprint(), digest_hex);
+        assert_eq!(m_check.typ(), EntryType::Article);
+        assert_eq!(m_check.subject().unwrap(), "baz");
+        assert_eq!(m_check.mime().unwrap(), "foo/bar");
+        assert_eq!(m_check.language().unwrap(), "nb-NO");
+    }
+
+    #[test]
+    fn test_metadata_file() {
+        env_logger::init();
+
+        let f = File::open("testdata/meta.txt").unwrap();
+        let m_check = MetaData::from_file(f).unwrap();
+        assert_eq!(m_check.title(), "foo");
+        assert_eq!(m_check.author(), "bar");
+        assert_eq!(m_check.typ(), EntryType::Report);
+        assert_eq!(m_check.subject().unwrap(), "baz");
+        assert_eq!(m_check.mime().unwrap(), "text/plain");
+        assert_eq!(m_check.language().unwrap(), "nb-NO");
     }
 }
