@@ -386,16 +386,6 @@ impl MetaData {
     }
 }
 
-//impl FromStr for MetaData {
-//    type Err = std::io::Error;
-//
-//    fn from_str(s: &str) -> Result<MetaData, <MetaData as FromStr>::Err> {
-//        BufRead
-//        MetaData::empty();
-//        Ok(())
-//    }
-//}
-
 #[cfg(test)]
 mod tests {
     use super::MetaData;

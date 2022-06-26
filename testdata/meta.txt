@@ -1,0 +1,6 @@
+Title: foo
+Author: bar
+Subject: baz
+Mime: text/plain
+Typ: report
+Language: nb-NO
