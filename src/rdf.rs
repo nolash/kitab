@@ -170,7 +170,7 @@ fn handle_parse_match(metadata: &mut MetaData, triple: Triple) -> Result<(), Rdf
     Ok(())
 }
 
-pub fn read(r: impl Read) {
+pub fn read(r: impl Read) -> MetaData {
     let mut metadata = MetaData::empty();
     let bf = BufReader::new(r);
     let mut tp = TurtleParser::new(bf, None);
@@ -183,6 +183,7 @@ pub fn read(r: impl Read) {
         }
         Ok(())
     });
+    metadata
 }
 
 #[cfg(test)]
