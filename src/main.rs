@@ -1,5 +1,9 @@
 use std::default;
-use std::fs::File;
+use std::fs::{
+    File,
+    create_dir_all,
+};
+use std::io::Write;
 use std::path::{
     Path,
     PathBuf,
@@ -20,7 +24,10 @@ use log::{
 };
 
 #[cfg(feature = "rdf")]
-use kitab::rdf::read as rdf_read;
+use kitab::rdf::{
+    read as rdf_read,
+    write as rdf_write,
+};
 
 
 fn args_setup() -> ArgMatches<'static> {
@@ -99,7 +106,11 @@ fn exec_import(f: &Path, index_path: &Path) {
         let m = rdf_read(&f);
         
         let fp = index_path.join(m.fingerprint());
+        create_dir_all(&index_path);
         debug!("writing record for title {} to {:?}", m.title(), &fp);
+    
+        let ff = File::create(fp).unwrap();
+        rdf_write(&m, &ff).unwrap();
     }
 }
 
