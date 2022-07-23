@@ -18,6 +18,8 @@ use clap::{
 use directories::{
     BaseDirs,
 };
+use walkdir::WalkDir;
+use hex;
 use log::{
     debug,
     info,
@@ -27,6 +29,13 @@ use log::{
 use kitab::rdf::{
     read as rdf_read,
     write as rdf_write,
+};
+use kitab::biblatex::{
+    read_all as biblatex_read_all,
+};
+use kitab::meta::{
+    MetaData,
+    digest_from_path,
 };
 
 
@@ -52,8 +61,20 @@ fn args_setup() -> ArgMatches<'static> {
         .required(true)
         .index(1)
         );
-
     o = o.subcommand(o_import);
+
+    let mut o_scan = (
+        SubCommand::with_name("scan")
+        .about("import information from file")
+        .version("0.0.1")
+        );
+    o_scan = o_scan.arg(
+        Arg::with_name("PATH")
+        .help("Path to operate on")
+        .required(true)
+        .index(1)
+        );
+    o = o.subcommand(o_scan);
 
     o.get_matches()
 }
@@ -99,7 +120,7 @@ fn str_to_path(args: &ArgMatches) -> PathBuf {
     p_canon
 }
 
-fn exec_import(f: &Path, index_path: &Path) {
+fn exec_import_rdf(f: &Path, index_path: &Path) {
     #[cfg(feature = "rdf")]
     {
         let f = File::open(f).unwrap();
@@ -111,6 +132,34 @@ fn exec_import(f: &Path, index_path: &Path) {
     
         let ff = File::create(fp).unwrap();
         rdf_write(&m, &ff).unwrap();
+    }
+}
+
+fn exec_import_biblatex(f: &Path, index_path: &Path) {
+    let f = File::open(f).unwrap();
+    biblatex_read_all(&f);
+}
+
+fn exec_scan(p: &Path, index_path: &Path) {
+    for entry in WalkDir::new(&p)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|e| !e.file_type().is_dir()) {
+            let ep = entry.path();
+            let z = digest_from_path(ep);
+            let z_hex = hex::encode(z);
+
+            let fp = index_path.join(&z_hex);
+            match fp.canonicalize() {
+                Ok(v) => {
+                    info!("apply {:?} for {:?}", entry, z_hex);
+                    let m = MetaData::from_path(ep).unwrap();
+                    m.to_xattr(&p);
+                },
+                Err(e) => {
+                    debug!("metadata not found for {:?} -> {:?}", entry, z_hex);
+                },
+            }
     }
 }
 
@@ -126,7 +175,17 @@ fn main() {
         Some(v) => {
             let p = str_to_path(v);
             info!("have path {:?}", &p);
-            return exec_import(p.as_path(), index_dir.as_path());
+            //return exec_import(p.as_path(), index_dir.as_path());
+            return exec_import_biblatex(p.as_path(), index_dir.as_path());
+        },
+        _ => {},
+    }
+
+    match args.subcommand_matches("scan") {
+        Some(v) => {
+            let p = str_to_path(v);
+            info!("have path {:?}", &p);
+            return exec_scan(p.as_path(), index_dir.as_path());
         },
         _ => {},
     }

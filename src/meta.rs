@@ -61,6 +61,21 @@ pub fn check_xattr() {
 
 }
 
+pub fn digest_from_path(filepath: &path::Path) -> Vec<u8> {
+        let mut h = Sha512::new();
+        let st = metadata(filepath).unwrap();
+        let bs: u64 = st.st_blksize();
+        let sz: u64 = st.st_size();
+        let mut b: Vec<u8> = vec!(0; bs as usize);
+        let mut f = File::open(filepath).unwrap();
+        let mut i: usize = 0;
+        while i < sz as usize {
+            let c = f.read(&mut b).unwrap();
+            h.update(&b[..c]);
+            i += c;
+        }
+        h.finalize().to_vec()
+    }
 impl MetaData {
     pub fn new(title: &str, author: &str, typ: EntryType, digest: Vec<u8>, filename: Option<FileName>) -> MetaData {
         let dc = DCMetaData::new(title, author, typ);
@@ -163,22 +178,6 @@ impl MetaData {
         hex::encode(&self.digest)
     }
 
-    fn digest_from_path(filepath: &path::Path) -> Vec<u8> {
-        let mut h = Sha512::new();
-        let st = metadata(filepath).unwrap();
-        let bs: u64 = st.st_blksize();
-        let sz: u64 = st.st_size();
-        let mut b: Vec<u8> = vec!(0; bs as usize);
-        let mut f = File::open(filepath).unwrap();
-        let mut i: usize = 0;
-        while i < sz as usize {
-            let c = f.read(&mut b).unwrap();
-            h.update(&b[..c]);
-            i += c;
-        }
-        h.finalize().to_vec()
-    }
-
     pub fn from_xattr(filepath: &path::Path) -> MetaData {
 
         let mut title: String = String::new();
@@ -186,7 +185,7 @@ impl MetaData {
         let mut typ: EntryType = EntryType::Unknown(String::new());
         let filename: FileName; 
 
-        let digest = MetaData::digest_from_path(filepath);
+        let digest = digest_from_path(filepath);
 
         filename = filepath.file_name()
             .unwrap()

@@ -9,6 +9,8 @@ pub mod store;
 #[cfg(feature = "rdf")]
 pub mod rdf;
 
+pub mod biblatex;
+
 #[cfg(test)]
 mod tests {
     use env_logger;
