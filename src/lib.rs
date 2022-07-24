@@ -6,7 +6,6 @@ pub mod dc;
 
 pub mod store;
 
-#[cfg(feature = "rdf")]
 pub mod rdf;
 
 pub mod biblatex;

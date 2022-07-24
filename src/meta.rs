@@ -359,6 +359,7 @@ impl MetaData {
 
     pub fn from_path(p: &path::Path) -> Result<MetaData, std::io::Error> {
         let f = File::open(&p).unwrap();
+        debug!("openning {}", p.display());
         let mut m = MetaData::from_file(f).unwrap();
         Ok(m)
     }
@@ -382,6 +383,12 @@ impl MetaData {
             }
         }
         Ok(m)
+    }
+}
+
+impl fmt::Debug for MetaData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format_args!("title \"{}\" author \"{}\" digest {}", self.title(), self.author(), self.fingerprint()))
     }
 }
 

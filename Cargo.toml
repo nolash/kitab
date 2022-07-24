@@ -35,17 +35,17 @@ tempfile = "^3.3.0"
 
 [dependencies.rio_turtle]
 version = "~0.7.1"
-optional = true
+#optional = true
 
 [dependencies.rio_api]
 version = "^0.7.1"
-optional = true
+#optional = true
 
 [dependencies.tree_magic]
 version = "^0.2.1"
 optional = true
 
 [features]
-rdf = ["rio_turtle", "rio_api"]
+#rdf = ["rio_turtle", "rio_api"]
 #dump_bibtex = ["biblatex"]
 magic = ["tree_magic"]
