@@ -32,6 +32,7 @@ use log::{
     error,
 };
 
+use crate::digest;
 use crate::meta::MetaData;
 use crate::error::ParseError;
 use crate::dc::{
@@ -118,17 +119,30 @@ pub fn write(entry: &MetaData, w: impl Write) -> Result<usize, std::io::Error> {
 fn handle_parse_match(metadata: &mut MetaData, triple: Triple) -> Result<(), RdfError> {
     let subject_iri = triple.subject.to_string();
     let l = subject_iri.len()-1;
+    //let subject = &subject_iri[1..l];
     let subject = &subject_iri[1..l];
+    match &subject[0..4] {
+        "urn:"  => {},
+        _ => {
+            return Err(RdfError::UrnError(UrnError::InvalidNid));
+        },
+    };
+    let digest_urn = match digest::from_urn(&subject[4..]) {
+        Err(e) => {
+            error!("error {:?}", &subject);
+            return Err(RdfError::UrnError(UrnError::InvalidNid));
+        },
+        Ok(v) => {
+            &subject[4..]
+        },
+    };
     let subject_urn = Urn::from_str(subject).unwrap();
-    if subject_urn.nid() != "sha512" {
-        return Err(RdfError::UrnError(UrnError::InvalidNid));
-    }
 
     let v = subject_urn.nss();
     let b = hex::decode(&v).unwrap();
     if metadata.fingerprint().len() == 0 {
         debug!("setting fingerprint {}", v);
-        metadata.set_fingerprint(b);
+        metadata.set_fingerprint_urn(digest_urn);
     } else if metadata.fingerprint() != v {
         return Err(RdfError::HashMismatchError);
     }

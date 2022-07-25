@@ -37,6 +37,8 @@ use crate::dc::{
     DC_XATTR_MEDIATYPE,
 };
 
+use crate::digest;
+
 use log::{
     debug,
 };
@@ -49,7 +51,7 @@ pub type FilePath = String;
 
 pub struct MetaData {
     dc: DCMetaData,
-    digest: Vec<u8>,
+    digest: digest::RecordDigest,
     local_name: Option<FileName>,
     comment: String,
     publish_date: PublishDate,
@@ -81,7 +83,7 @@ impl MetaData {
 
         let mut m = MetaData{
                 dc: dc,
-                digest: vec!(),
+                digest: digest::RecordDigest::Empty,
                 comment: String::new(),
                 local_name: filename,
                 publish_date: (0, 0, 0),
@@ -96,7 +98,7 @@ impl MetaData {
         let dc = DCMetaData::new("", "", EntryType::Unknown(String::new()));
         MetaData{
                 dc: dc,
-                digest: vec!(),
+                digest: digest::RecordDigest::Empty,
                 comment: String::new(),
                 //local_name: filepath.to_str().unwrap().to_string(),
                 local_name: None,
@@ -114,11 +116,11 @@ impl MetaData {
     }
 
     pub fn set_fingerprint(&mut self, fingerprint: Vec<u8>) {
-        let sz = Sha512::output_size();
-        if fingerprint.len() != sz {
-            panic!("wrong digest size, must be {}", sz);
-        }
-        self.digest = fingerprint;
+        self.digest = digest::from_vec(fingerprint).unwrap();
+    }
+
+    pub fn set_fingerprint_urn(&mut self, urn: &str) {
+        self.digest = digest::from_urn(urn).unwrap();
     }
 
     pub fn title(&self) -> String {
@@ -174,7 +176,20 @@ impl MetaData {
     }
 
     pub fn fingerprint(&self) -> String {
-        hex::encode(&self.digest)
+        match &self.digest {
+            digest::RecordDigest::Empty => {
+                return String::new();
+            },
+            digest::RecordDigest::Sha512(v) => {
+                return hex::encode(&v);
+            },
+            digest::RecordDigest::Sha256(v) => {
+                return hex::encode(&v);
+            },
+            digest::RecordDigest::SwarmHash(v) => {
+                return hex::encode(&v);
+            },
+        }
     }
 
     pub fn from_xattr(filepath: &path::Path) -> MetaData {

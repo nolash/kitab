@@ -12,6 +12,8 @@ pub mod biblatex;
 
 pub mod error;
 
+pub mod digest;
+
 #[cfg(test)]
 mod tests {
     use env_logger;
