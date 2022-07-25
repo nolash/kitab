@@ -27,6 +27,7 @@ use log::{
 
 use kitab::rdf::{
     read as rdf_read,
+    read_all as rdf_read_all,
     write as rdf_write,
 };
 use kitab::biblatex::{
@@ -129,19 +130,45 @@ fn store(index_path: &Path, m: &MetaData) {
     debug!("stored as rdf {:?}", fp);
 }
 
-fn exec_import_rdf(f: &Path, index_path: &Path) {
+fn exec_import_rdf(f: &Path, index_path: &Path) -> bool {
     let f = File::open(f).unwrap();
-    let m = rdf_read(&f);
-    store(index_path, &m);    
-}
+    let entries = match rdf_read_all(&f) {
+        Ok(v) => {
+            v
+        },
+        Err(e) => {
+            return false;
+        }
+    };
 
-fn exec_import_biblatex(f: &Path, index_path: &Path) {
-    let f = File::open(f).unwrap();
-    let entries = biblatex_read_all(&f);
+    debug!("successfully processed rdf import source");
 
     for m in entries {
+        info!("importing rdf source {:?}", &m);
+        store(index_path, &m);
+    }
+    true
+}
+
+fn exec_import_biblatex(f: &Path, index_path: &Path) -> bool {
+    let f = File::open(f).unwrap();
+    let entries = match biblatex_read_all(&f) {
+         Ok(v) => {
+            v
+        },
+        Err(e) => {
+            return false;
+        }       
+    };
+
+    debug!("successfully processed biblatex import source");
+
+    for m in entries {
+        info!("importing biblatex source {:?}", &m);
         store(index_path, &m);    
     }
+
+    true
 }
 
 fn exec_scan(p: &Path, index_path: &Path) {
@@ -180,8 +207,12 @@ fn main() {
         Some(v) => {
             let p = str_to_path(v);
             info!("have path {:?}", &p);
-            //return exec_import_rdf(p.as_path(), index_dir.as_path());
-            return exec_import_biblatex(p.as_path(), index_dir.as_path());
+            if exec_import_rdf(p.as_path(), index_dir.as_path()) {
+                return;
+            }
+            if exec_import_biblatex(p.as_path(), index_dir.as_path()) {
+                return;
+            }
         },
         _ => {},
     }

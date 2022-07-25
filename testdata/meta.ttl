@@ -8,3 +8,10 @@
 	dcterms:type "article" ;
 	dcterms:MediaType "application/pdf" ;
 	dcterms:language "en-US" .
+
+<urn:sha512:f450b0b35ed8bd1c00b45b4f6ebd645079ae8bf3b8abd28aea62fc2ab3bab2878e021e0b6c182f776e24e5ed956c204d647b4c5b0f64a73e3753f736ffe2818c>
+	dcterms:title "Towards a Decentralized Data Marketplace for Smart Cities";
+	dcterms:creator "Gowri Sankar Ramachandran, Rahul Radhakrishnan and Bhaskar Krishnamachari";
+	dcterms:type "article" ;
+	dcterms:MediaType "application/pdf" ;
+	dcterms:language "en-US" .

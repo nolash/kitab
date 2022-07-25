@@ -3,7 +3,10 @@ use std::io::{
 };
 use std::str;
 
-use log::debug;
+use log::{
+    debug,
+    error,
+};
 use biblatex::{
     Bibliography,
     Type,
@@ -11,6 +14,7 @@ use biblatex::{
 };
 
 use crate::meta::MetaData;
+use crate::error::ParseError;
 
 fn parse_digest(entry: &Entry) -> Vec<u8> {
     let note = entry.get("note").unwrap();
@@ -38,10 +42,18 @@ fn parse_digest(entry: &Entry) -> Vec<u8> {
     digest
 }
 
-pub fn read_all(mut r: impl Read) -> Vec<MetaData> {
+pub fn read_all(mut r: impl Read) -> Result<Vec<MetaData>, ParseError> {
     let mut s = String::new();
     let c = r.read_to_string(&mut s);
-    let bib = Bibliography::parse(&s).unwrap();
+    let bib = match Bibliography::parse(&s) {
+        Ok(v) => {
+            v
+        },
+        Err(e) => {
+            error!("parse error for biblatex");
+            return Err(ParseError);
+        },
+    };
 
     let mut rr: Vec<MetaData> = vec!();
 
@@ -83,5 +95,5 @@ pub fn read_all(mut r: impl Read) -> Vec<MetaData> {
         debug!("read metadata {:?}", &m);
         rr.push(m);
     }
-    rr
+    Ok(rr)
 }

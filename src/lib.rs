@@ -10,6 +10,8 @@ pub mod rdf;
 
 pub mod biblatex;
 
+pub mod error;
+
 #[cfg(test)]
 mod tests {
     use env_logger;

@@ -39,7 +39,6 @@ use crate::dc::{
 
 use log::{
     debug,
-    info,
 };
 
 pub type PublishDate = (u8, u8, u32);
@@ -308,27 +307,27 @@ impl MetaData {
         match predicate.to_lowercase().as_str() {
             "title" => {
                 self.set_title(object);
-                info!("found title: {}", object);
+                debug!("found title: {}", object);
             },
             "author" => {
                 self.set_author(object);
-                info!("found author: {}", object);
+                debug!("found author: {}", object);
             },
             "subject" => {
                 self.set_subject(object);
-                info!("found subject: {}", object);
+                debug!("found subject: {}", object);
             },
             "typ" => {
                 self.set_typ(object);
-                info!("found typ: {}", object);
+                debug!("found typ: {}", object);
             },
             "language" => {
                 self.set_language(object);
-                info!("found language: {}", object);
+                debug!("found language: {}", object);
             },
             "mime" => {
                 self.set_mime_str(object);
-                info!("found mime: {}", object);
+                debug!("found mime: {}", object);
             },
             _ => {
                 return false;
@@ -353,7 +352,7 @@ impl MetaData {
         if self.mime() == None {
             let mime = tree_magic::from_filepath(path);
             self.set_mime_str(&mime);
-            info!("magic set mime {}", mime);
+            debug!("magic set mime {}", mime);
         }
     }
 

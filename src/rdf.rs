@@ -29,10 +29,11 @@ use urn::{
 use log::{
     debug,
     info,
+    error,
 };
 
 use crate::meta::MetaData;
-
+use crate::error::ParseError;
 use crate::dc::{
     DC_IRI_TITLE,
     DC_IRI_CREATOR,
@@ -42,6 +43,7 @@ use crate::dc::{
     DC_IRI_MEDIATYPE,
 };
 
+#[derive(Debug)]
 pub enum RdfError {
     UrnError(UrnError),
     HashMismatchError,
@@ -125,7 +127,7 @@ fn handle_parse_match(metadata: &mut MetaData, triple: Triple) -> Result<(), Rdf
     let v = subject_urn.nss();
     let b = hex::decode(&v).unwrap();
     if metadata.fingerprint().len() == 0 {
-        info!("setting fingerprint {}", v);
+        debug!("setting fingerprint {}", v);
         metadata.set_fingerprint(b);
     } else if metadata.fingerprint() != v {
         return Err(RdfError::HashMismatchError);
@@ -136,32 +138,32 @@ fn handle_parse_match(metadata: &mut MetaData, triple: Triple) -> Result<(), Rdf
         DC_IRI_TITLE => {
             let title = triple.object.to_string().replace("\"", "");
             metadata.set_title(title.as_str());
-            info!("found title: {}", title);
+            debug!("found title: {}", title);
         },
         DC_IRI_CREATOR => {
             let author = triple.object.to_string().replace("\"", "");
             metadata.set_author(author.as_str());
-            info!("found author: {}", author);
+            debug!("found author: {}", author);
         },
         DC_IRI_SUBJECT => {
             let mut subject = triple.object.to_string().replace("\"", "");
             metadata.set_subject(subject.as_str());
-            info!("found subject: {}", subject);
+            debug!("found subject: {}", subject);
         },
         DC_IRI_LANGUAGE => {
             let mut lang = triple.object.to_string().replace("\"", "");
             metadata.set_language(lang.as_str());
-            info!("found language: {}", lang);
+            debug!("found language: {}", lang);
         },
         DC_IRI_TYPE => {
             let mut typ = triple.object.to_string().replace("\"", "");
             metadata.set_typ(typ.as_str());
-            info!("found entry type: {}", typ);
+            debug!("found entry type: {}", typ);
         },
         DC_IRI_MEDIATYPE => {
             let mut mime_type = triple.object.to_string().replace("\"", "");
             metadata.set_mime_str(mime_type.as_str());
-            info!("found mime type: {}", mime_type);
+            debug!("found mime type: {}", mime_type);
         },
         _ => {
             debug!("skipping unknown predicate: {}", field);
@@ -170,7 +172,40 @@ fn handle_parse_match(metadata: &mut MetaData, triple: Triple) -> Result<(), Rdf
     Ok(())
 }
 
+pub fn read_all(r: impl Read) -> Result<Vec<MetaData>, ParseError> {
+    let mut rr: Vec<MetaData> = vec!();
+    let bf = BufReader::new(r);
+    let mut tp = TurtleParser::new(bf, None);
+    rr.push(MetaData::empty());
+    let mut i: usize = 0;
+    let r: Result<_, TurtleError> = tp.parse_all(&mut |r| {
+        match r {
+            Triple{subject, predicate, object } => {
+                match handle_parse_match(&mut rr[i], r) {
+                    Err(HashMismatchError) => {
+                        rr.push(MetaData::empty());
+                        i += 1;
+                        match handle_parse_match(&mut rr[i], r) {
+                            Err(e) => {
+                                error!("{:?}", e);
+                            },
+                            _ => {},
+                        };
+                    },
+                    _ => {},
+                };
+            },
+        }
+        Ok(())
+    });
+    // TODO: should check validity of all records
+    if rr[0].fingerprint() == "" {
+        return Err(ParseError);
+    }
+    Ok(rr)
+}
 pub fn read(r: impl Read) -> MetaData {
+    let mut rr: Vec<MetaData> = vec!();
     let mut metadata = MetaData::empty();
     let bf = BufReader::new(r);
     let mut tp = TurtleParser::new(bf, None);
