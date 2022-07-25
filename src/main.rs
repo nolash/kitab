@@ -25,6 +25,7 @@ use log::{
     info,
 };
 
+use biblatex::EntryType;
 use kitab::rdf::{
     read as rdf_read,
     read_all as rdf_read_all,
@@ -130,6 +131,23 @@ fn store(index_path: &Path, m: &MetaData) {
     debug!("stored as rdf {:?}", fp);
 }
 
+fn exec_import_xattr(f: &Path, index_path: &Path) -> bool {
+    let m = MetaData::from_xattr(f);
+    match m.typ() {
+        EntryType::Unknown(v) => {
+            debug!("vvv {}", v);
+            return false;
+        },
+        _ => {},
+    };
+
+    debug!("successfully processed xattr import source");
+
+    info!("importing xattr source {:?}", &m);
+    store(index_path, &m);
+    true
+}
+
 fn exec_import_rdf(f: &Path, index_path: &Path) -> bool {
     let f = File::open(f).unwrap();
     let entries = match rdf_read_all(&f) {
@@ -153,7 +171,7 @@ fn exec_import_rdf(f: &Path, index_path: &Path) -> bool {
 fn exec_import_biblatex(f: &Path, index_path: &Path) -> bool {
     let f = File::open(f).unwrap();
     let entries = match biblatex_read_all(&f) {
-         Ok(v) => {
+        Ok(v) => {
             v
         },
         Err(e) => {
@@ -207,6 +225,9 @@ fn main() {
         Some(v) => {
             let p = str_to_path(v);
             info!("have path {:?}", &p);
+            if exec_import_xattr(p.as_path(), index_dir.as_path()) {
+                return;
+            }
             if exec_import_rdf(p.as_path(), index_dir.as_path()) {
                 return;
             }
