@@ -135,7 +135,6 @@ fn exec_import_xattr(f: &Path, index_path: &Path) -> bool {
     let m = MetaData::from_xattr(f);
     match m.typ() {
         EntryType::Unknown(v) => {
-            debug!("vvv {}", v);
             return false;
         },
         _ => {},
@@ -189,7 +188,7 @@ fn exec_import_biblatex(f: &Path, index_path: &Path) -> bool {
     true
 }
 
-fn exec_scan(p: &Path, index_path: &Path) {
+fn exec_scan(p: &Path, index_path: &Path) -> bool {
     for entry in WalkDir::new(&p)
         .into_iter()
         .filter_map(Result::ok)
@@ -209,7 +208,28 @@ fn exec_scan(p: &Path, index_path: &Path) {
                 Err(e) => {
                     debug!("metadata not found for {:?} -> {:?}", entry, z_hex);
                 },
-            }
+            };
+    }
+    true
+}
+
+fn exec_import(p: &Path, index_path: &Path) {
+    for entry in WalkDir::new(&p)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|e| !e.file_type().is_dir()) {
+
+        let fp = entry.path();
+        debug!("processing {:?}", fp);
+        if exec_import_xattr(fp, index_path) {
+            continue;
+        }
+        if exec_import_rdf(fp, index_path) {
+            continue;
+        } 
+        if exec_import_biblatex(fp, index_path) {
+            continue;
+        }
     }
 }
 
@@ -224,25 +244,20 @@ fn main() {
     match args.subcommand_matches("import") {
         Some(v) => {
             let p = str_to_path(v);
-            info!("have path {:?}", &p);
-            if exec_import_xattr(p.as_path(), index_dir.as_path()) {
-                return;
-            }
-            if exec_import_rdf(p.as_path(), index_dir.as_path()) {
-                return;
-            }
-            if exec_import_biblatex(p.as_path(), index_dir.as_path()) {
-                return;
-            }
+            info!("import from path {:?}", &p);
+            return exec_import(&p, index_dir.as_path());
         },
         _ => {},
     }
 
+    let mut r = true;
     match args.subcommand_matches("scan") {
         Some(v) => {
             let p = str_to_path(v);
-            info!("have path {:?}", &p);
-            return exec_scan(p.as_path(), index_dir.as_path());
+            info!("scan from path {:?}", &p);
+            if !exec_scan(p.as_path(), index_dir.as_path()) {
+                r = false; 
+            }
         },
         _ => {},
     }

@@ -6,12 +6,18 @@
 	language = "en",
 	note = "sha512:2ac531ee521cf93f8419c2018f770fbb42c65396178e079a416e7038d3f9ab9fc2c35c4d838bc8b5dd68f4c13759fe9cdf90a46528412fefe1294cb26beabf4e",
 }
-@inproceedings{
-	decentralizedmarketplace_smartcities,
-	author = "Gowri Sankar Ramachandran, Rahul Radhakrishnan and Bhaskar Krishnamachari",
-	title = "Towards a Decentralized Data Marketplace for Smart Cities",
-	booktitle = "IEEE International Smart Cities Conference",
-	month = sep,
-	year = 2018,
-	note = "sha512:f450b0b35ed8bd1c00b45b4f6ebd645079ae8bf3b8abd28aea62fc2ab3bab2878e021e0b6c182f776e24e5ed956c204d647b4c5b0f64a73e3753f736ffe2818c",
+
+@techreport{
+	kenya_dataprotectionact,
+	title = "The Data Protection Act, 2019",
+	author = "Government of Kenya",
+	year = 2019,
+	month = nov,
+	booktitle = "Kenya Gazette Supplement, ACTS 2019",
+	publisher = "The Government Printer, Nairobi",
+	note = "sha256:7d76e977bbc0b5ca652c058e62be2baf04d2b2106424ff76c7a2b71bff803301",
+	url = "http://kenyalaw.org/kl/fileadmin/pdfdownloads/Acts/2019/TheDataProtectionAct__No24of2019.pdf",
+	urldate = "2022-02-17",
+	pages = "901--948",
+	note = "sha512:9136bb8c656f0ac208b1802ee23980c3b761ef4153c09f723c4724c841c048c159ee61be8222d202b698b718768b3d4931046e977f4e858dc46ae9d2d8ac4afa",
 }

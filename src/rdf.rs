@@ -121,7 +121,7 @@ fn handle_parse_match(metadata: &mut MetaData, triple: Triple) -> Result<(), Rdf
     let l = subject_iri.len()-1;
     //let subject = &subject_iri[1..l];
     let subject = &subject_iri[1..l];
-    match &subject[0..4] {
+    match subject[0..4].to_lowercase().as_str() {
         "urn:"  => {},
         _ => {
             return Err(RdfError::UrnError(UrnError::InvalidNid));
@@ -226,7 +226,12 @@ pub fn read(r: impl Read) -> MetaData {
     let r: Result<_, TurtleError> = tp.parse_all(&mut |r| {
         match r {
             Triple{subject, predicate, object } => {
-                handle_parse_match(&mut metadata, r);
+                match handle_parse_match(&mut metadata, r) {
+                    Err(e) => {
+                        error!("error parsing rdf source: {:?}", e);
+                    },
+                    _ => {},
+                };
             },
             _ => {},
         }

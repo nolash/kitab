@@ -1,13 +1,13 @@
 @prefix dcterms: <https://purl.org/dc/terms/> .
 @prefix dcmi: <https://purl.org/dc/dcmi/> .
 
-<urn:sha512:2ac531ee521cf93f8419c2018f770fbb42c65396178e079a416e7038d3f9ab9fc2c35c4d838bc8b5dd68f4c13759fe9cdf90a46528412fefe1294cb26beabf4e>
-	dcterms:title "Bitcoin: A Peer-to-Peer Electronic Cash System" ;
-	dcterms:subject "bitcoin,cryptocurrency,cryptography" ;
-	dcterms:creator "Satoshi Nakamoto" ;
-	dcterms:type "article" ;
+<urn:sha256:9d57da39b0c06dd9cbc9244fa0b948ee4841a9520ccc5e21aaf318242cc4de07>
+	dcterms:title "Blockchain and the General Data Protection Regulation" ;
+	dcterms:subject "blockchain,regulation,government" ;
+	dcterms:creator "European Parliamentary Research Service, Scientific Foresight Unit (STOA)" ;
+	dcterms:type "techreport" ;
 	dcterms:MediaType "application/pdf" ;
-	dcterms:language "en-US" .
+	dcterms:language "en" .
 
 <urn:sha512:f450b0b35ed8bd1c00b45b4f6ebd645079ae8bf3b8abd28aea62fc2ab3bab2878e021e0b6c182f776e24e5ed956c204d647b4c5b0f64a73e3753f736ffe2818c>
 	dcterms:title "Towards a Decentralized Data Marketplace for Smart Cities";
