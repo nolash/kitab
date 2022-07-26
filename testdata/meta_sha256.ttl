@@ -1,0 +1,10 @@
+@prefix dcterms: <https://purl.org/dc/terms/> .
+@prefix dcmi: <https://purl.org/dc/dcmi/> .
+
+<urn:sha256:b1674191a88ec5cdd733e4240a81803105dc412d6c6708d53ab94fc248f4f553>
+	dcterms:title "Bitcoin: A Peer-to-Peer Electronic Cash System" ;
+	dcterms:subject "bitcoin,cryptocurrency,cryptography" ;
+	dcterms:creator "Satoshi Nakamoto" ;
+	dcterms:type "article" ;
+	dcterms:MediaType "application/pdf" ;
+	dcterms:language "en-US" .
