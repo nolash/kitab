@@ -43,114 +43,147 @@ use log::{
     debug,
 };
 
+/// Date elements as d/m/Y tuple.
 pub type PublishDate = (u8, u8, u32);
 
+/// Alias for file name (basename).
 pub type FileName = String;
 
+/// Alias for absolute file path.
 pub type FilePath = String;
 
+/// Represents the full metadata for a media file.
 pub struct MetaData {
+    /// The Dublin Core vocabulary parts of the metadata.
     dc: DCMetaData,
+    /// The digest of the file that the metadata is keyed to.
     digest: digest::RecordDigest,
+    /// Optional local filename, e.g. to use for HTTP `Content-Disposition` header, rename matching files to client's original name, etc.
     local_name: Option<FileName>,
-    comment: String,
+    /// Publication date of the content that the media represents.
     publish_date: PublishDate,
-    retrieval_timestamp: u32,
 }
 
-pub fn check_xattr() {
+//pub fn check_xattr() {
 
-}
+//}
 
+/// Generates the native `sha512` digest of a file.
+///
+/// # Arguments
+///
+/// * `filepath` - Absolute path to file to calculate digest for.
 pub fn digest_from_path(filepath: &path::Path) -> Vec<u8> {
-        let mut h = Sha512::new();
-        let st = metadata(filepath).unwrap();
-        let bs: u64 = st.st_blksize();
-        let sz: u64 = st.st_size();
-        let mut b: Vec<u8> = vec!(0; bs as usize);
-        let mut f = File::open(filepath).unwrap();
-        let mut i: usize = 0;
-        while i < sz as usize {
-            let c = f.read(&mut b).unwrap();
-            h.update(&b[..c]);
-            i += c;
-        }
-        h.finalize().to_vec()
+    let mut h = Sha512::new();
+    let st = metadata(filepath).unwrap();
+    let bs: u64 = st.st_blksize();
+    let sz: u64 = st.st_size();
+    let mut b: Vec<u8> = vec!(0; bs as usize);
+    let mut f = File::open(filepath).unwrap();
+    let mut i: usize = 0;
+    while i < sz as usize {
+        let c = f.read(&mut b).unwrap();
+        h.update(&b[..c]);
+        i += c;
     }
+    h.finalize().to_vec()
+}
+
 impl MetaData {
-    pub fn new(title: &str, author: &str, typ: EntryType, digest: Vec<u8>, filename: Option<FileName>) -> MetaData {
-        let dc = DCMetaData::new(title, author, typ);
+    /// Create a new MetaData instance with basic data.
+    ///
+    /// # Arguments
+    ///
+    /// * `title` - Maps to the [DCMetaData::title] field.
+    /// * `author` - Maps to the [DCMetaData::author] field.
+    /// * `entry_type` - Maps to the [DCMetaData::typ] field.
+    /// * `digest` - The digest of the media file.
+    /// * `filename` - The client's optional local file name for the media.
+    pub fn new(title: &str, author: &str, entry_type: EntryType, digest: Vec<u8>, filename: Option<FileName>) -> MetaData {
+        let dc = DCMetaData::new(title, author, entry_type);
 
         let mut m = MetaData{
                 dc: dc,
                 digest: digest::RecordDigest::Empty,
-                comment: String::new(),
                 local_name: filename,
                 publish_date: (0, 0, 0),
-                retrieval_timestamp: 0,
         };
 
         m.set_fingerprint(digest);
         m
     }
 
+    /// Create an empty MetaData instance.
     pub fn empty() -> MetaData {
         let dc = DCMetaData::new("", "", EntryType::Unknown(String::new()));
         MetaData{
                 dc: dc,
                 digest: digest::RecordDigest::Empty,
-                comment: String::new(),
                 //local_name: filepath.to_str().unwrap().to_string(),
                 local_name: None,
                 publish_date: (0, 0, 0),
-                retrieval_timestamp: 0,
         }
     }
 
+    /// Set the [DCMetaData::title](DCMetaData::title) value.
     pub fn set_title(&mut self, title: &str) {
         self.dc.title = String::from(title);
     }
 
+    /// Set the [DCMetaData::author](DCMetaData::author) value.
     pub fn set_author(&mut self, author: &str) {
         self.dc.author = String::from(author);
     }
 
+    /// Set the digest as [digest::RecordDigest::Sha512](digest::RecordDigest::Sha512) instance of the provided
+    /// fingerprint.
     pub fn set_fingerprint(&mut self, fingerprint: Vec<u8>) {
         self.digest = digest::from_vec(fingerprint).unwrap();
     }
 
+    /// Set the digest from the given URN string.
+    ///
+    /// The URN must specify a valid supported [digest](digest::from_urn) scheme.
     pub fn set_fingerprint_urn(&mut self, urn: &str) {
         self.digest = digest::from_urn(urn).unwrap();
     }
 
+    /// Returns the current [DCMetaData::title](DCMetaData::title) value.
     pub fn title(&self) -> String {
         self.dc.title.clone()
     }
 
+    /// Returns the current [DCMetaData::author](DCMetaData::author) value.
     pub fn author(&self) -> String {
         self.dc.author.clone()
     }
 
+    /// Set the [DCMetaData::typ](DCMetaData::typ) value.
     pub fn set_typ(&mut self, typ: &str) {
         self.dc.typ = EntryType::from_str(typ).unwrap();
     }
 
+    /// Returns the current [DCMetaData::typ](DCMetaData::typ) value.
     pub fn typ(&self) -> EntryType {
         self.dc.typ.clone()
     }
 
+    /// Set the current [DCMetaData::subject](DCMetaData::subject) value.
     pub fn set_subject(&mut self, v: &str) {
         self.dc.subject = Some(String::from(v));
     }
 
+    /// Returns the current [DCMetaData::subject](DCMetaData::subject) value.
     pub fn subject(&self) -> Option<String> {
         return self.dc.subject.clone();
     }
 
+    /// Set the current [DCMetaData::mime](DCMetaData::mime) value.
     pub fn set_mime(&mut self, m: Mime) {
         self.dc.mime = Some(m);
     }
 
+    /// Set the current [DCMetaData::mime](DCMetaData::mime) value from the given MIME identifier string.
     pub fn set_mime_str(&mut self, s: &str) {
         match Mime::from_str(s) {
             Ok(v) => {
@@ -162,19 +195,23 @@ impl MetaData {
         };
     }
 
+    /// Returns the current [DCMetaData::mime](DCMetaData::mime) value.
     pub fn mime(&self) -> Option<Mime> {
         self.dc.mime.clone()
     }
 
+    /// Set the current [DCMetaData::language](DCMetaData::language) value.
     pub fn set_language(&mut self, s: &str) {
         let v = s.parse().unwrap();
         self.dc.language = Some(v);
     }
 
+    /// Returns the current [DCMetaData::language](DCMetaData::language) value.
     pub fn language(&self) -> Option<LanguageIdentifier> {
         self.dc.language.clone()
     }
 
+    /// Returns the digest value of the media as a hex-encoded string.
     pub fn fingerprint(&self) -> String {
         match &self.digest {
             digest::RecordDigest::Empty => {
@@ -192,6 +229,7 @@ impl MetaData {
         }
     }
 
+    /// Instantiate metadata from the extended attributes of the file in `filepath`.
     pub fn from_xattr(filepath: &path::Path) -> MetaData {
 
         let mut title: String = String::new();
@@ -283,6 +321,9 @@ impl MetaData {
     }
 
 
+    /// Applies the metadata as extended file attributes of the file in `filepath`.
+    ///
+    ///
     pub fn to_xattr(&self, filepath: &path::Path) -> Result<(), std::io::Error> {
         let filename = filepath.file_name()
             .unwrap()
@@ -363,6 +404,7 @@ impl MetaData {
     }
 
     #[cfg(feature = "magic")]
+    /// Automatically detect media type of file in `path`.
     pub fn set_mime_magic(&mut self, path: &path::Path) {
         if self.mime() == None {
             let mime = tree_magic::from_filepath(path);
@@ -371,6 +413,9 @@ impl MetaData {
         }
     }
 
+    /// Parse metadata from simplified metadata format contained in file in `path`.
+    ///
+    /// see [MetaData::from_file](MetaData::from_file)
     pub fn from_path(p: &path::Path) -> Result<MetaData, std::io::Error> {
         let f = File::open(&p).unwrap();
         debug!("openning {}", p.display());
@@ -378,6 +423,9 @@ impl MetaData {
         Ok(m)
     }
 
+    /// Parse metadata from simplified metadata format contained in the given file instance `f`.
+    ///
+    /// TODO: describe format.
     pub fn from_file(f: File) -> Result<MetaData, std::io::Error> {
         let mut m = MetaData::empty();
         //let f = File::open(path).unwrap();

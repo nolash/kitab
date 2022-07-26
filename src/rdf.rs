@@ -45,11 +45,23 @@ use crate::dc::{
 };
 
 #[derive(Debug)]
+/// Error states when processing RDF data.
 pub enum RdfError {
+    /// Invalid URN string or digest scheme.
     UrnError(UrnError),
+    /// Hash does not match hash in current [crate::meta::MetaData](crate::meta::MetaData)
+    /// instance.
     HashMismatchError,
 }
 
+/// Write metadata entry in the native rdf-turtle format.
+///
+/// On success, returns the number of bytes written.
+///
+/// # Arguments 
+///
+/// * `entry` - metadata to write.
+/// * `w` - writer implementation providing the destination.
 pub fn write(entry: &MetaData, w: impl Write) -> Result<usize, std::io::Error> {
     let mut tfmt = TurtleFormatter::new(w);
     
@@ -186,6 +198,13 @@ fn handle_parse_match(metadata: &mut MetaData, triple: Triple) -> Result<(), Rdf
     Ok(())
 }
 
+/// Read one or more metadata entries from the rdf-turtle source.
+///
+/// Will return `ParseError` if any of the records are invalid.
+///
+/// # Arguments 
+///
+/// * `r` - reader implementation providing the source.
 pub fn read_all(r: impl Read) -> Result<Vec<MetaData>, ParseError> {
     let mut rr: Vec<MetaData> = vec!();
     let bf = BufReader::new(r);
@@ -218,6 +237,12 @@ pub fn read_all(r: impl Read) -> Result<Vec<MetaData>, ParseError> {
     }
     Ok(rr)
 }
+
+/// Read a single metadata entry from the rdf-turtle source.
+///
+/// # Arguments 
+///
+/// * `r` - reader implementation providing the source.
 pub fn read(r: impl Read) -> MetaData {
     let mut rr: Vec<MetaData> = vec!();
     let mut metadata = MetaData::empty();

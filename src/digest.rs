@@ -8,6 +8,7 @@ use sha2::{
 
 use log::error;
 
+/// Encapsulations of supported digests for digest data.
 pub enum RecordDigest {
     Sha512(Vec<u8>),
     Sha256(Vec<u8>),
@@ -17,6 +18,9 @@ pub enum RecordDigest {
 
 
 
+/// Create a [RecordDigest::Sha512](RecordDigest::Sha512) instance from the raw digest data.
+///
+/// Will fail if digest has incorrect length.
 pub fn from_vec(v: Vec<u8>) -> Result<RecordDigest, ParseError> {
     let sz = Sha512::output_size();
     if v.len() != sz {
@@ -25,6 +29,13 @@ pub fn from_vec(v: Vec<u8>) -> Result<RecordDigest, ParseError> {
     Ok(RecordDigest::Sha512(v))
 }
 
+/// Create a [RecordDigest](RecordDigest) instance corresponding to the URN digest scheme.
+///
+/// Valid URN schemes and their corresponding enumerated values are:
+/// 
+/// * `sha512` -> [RecordDigest::Sha512](RecordDigest::Sha512])
+/// * `sha256` -> [RecordDigest::Sha256](RecordDigest::Sha256])
+/// * `bzz` -> [RecordDigest::SwarmHash](RecordDigest::SwarmHash])
 pub fn from_urn(urn: &str) -> Result<RecordDigest, ParseError> {
     let mut v = urn.split(":");
     let r = match v.next() {
