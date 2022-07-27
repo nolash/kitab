@@ -42,6 +42,13 @@ fn parse_digest(entry: &Entry) -> Vec<u8> {
     digest
 }
 
+/// Read one or more metadata entries from the `bibtex` source.
+///
+/// Will return `ParseError` if any of the records are invalid.
+///
+/// # Arguments 
+///
+/// * `r` - reader implementation providing the source.
 pub fn read_all(mut r: impl Read) -> Result<Vec<MetaData>, ParseError> {
     let mut s = String::new();
     let c = r.read_to_string(&mut s);

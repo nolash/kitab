@@ -7,17 +7,20 @@ use std::fs::File;
 
 use crate::meta::MetaData;
 
+/// Represents the filesystem storage location for metadata.
 pub struct FileStore{
     path: PathBuf,
 }
 
 impl FileStore {
+    /// Create new store.
     pub fn new(p: &Path) -> Self {
         FileStore{
             path: p.to_path_buf(),
         }
     }
 
+    /// Generate new writer for adding / modifying a metadata entry in the store.
     pub fn writer(&self, entry: &MetaData) -> impl Write {
         let p = self.path.join(entry.fingerprint());
         File::create(&p).unwrap()

@@ -44,13 +44,6 @@ fn args_setup() -> ArgMatches<'static> {
     let mut o = App::new("kitab");
     o = o.version("0.0.1");
     o = o.author("Louis Holbrook <dev@holbrook.no>");
-    o = o.arg(
-        Arg::with_name("file")
-            .long("file")
-            .short("f")
-            .value_name("File to match records against")
-            .takes_value(true)
-            );
     let mut o_import = (
         SubCommand::with_name("import")
         .about("import information from file")
@@ -64,18 +57,18 @@ fn args_setup() -> ArgMatches<'static> {
         );
     o = o.subcommand(o_import);
 
-    let mut o_scan = (
-        SubCommand::with_name("scan")
+    let mut o_apply = (
+        SubCommand::with_name("apply")
         .about("import information from file")
         .version("0.0.1")
         );
-    o_scan = o_scan.arg(
+    o_apply = o_apply.arg(
         Arg::with_name("PATH")
         .help("Path to operate on")
         .required(true)
         .index(1)
         );
-    o = o.subcommand(o_scan);
+    o = o.subcommand(o_apply);
 
     o.get_matches()
 }
@@ -83,7 +76,7 @@ fn args_setup() -> ArgMatches<'static> {
 // commands
 // kitab import <file> - attempt in order import rdf, import spec
     // kitab export <file> - export rdf/turtle
-    // kitab scan <path> - recursively 
+    // kitab apply <path> - recursively 
 
     fn resolve_directory(args: &ArgMatches) -> PathBuf {
         match BaseDirs::new() {
@@ -188,7 +181,7 @@ fn exec_import_biblatex(f: &Path, index_path: &Path) -> bool {
     true
 }
 
-fn exec_scan(p: &Path, index_path: &Path) -> bool {
+fn exec_apply(p: &Path, index_path: &Path) -> bool {
     for entry in WalkDir::new(&p)
         .into_iter()
         .filter_map(Result::ok)
@@ -251,11 +244,11 @@ fn main() {
     }
 
     let mut r = true;
-    match args.subcommand_matches("scan") {
+    match args.subcommand_matches("apply") {
         Some(v) => {
             let p = str_to_path(v);
-            info!("scan from path {:?}", &p);
-            if !exec_scan(p.as_path(), index_dir.as_path()) {
+            info!("apply from path {:?}", &p);
+            if !exec_apply(p.as_path(), index_dir.as_path()) {
                 r = false; 
             }
         },
