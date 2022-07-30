@@ -1,9 +1,15 @@
 [package]
 name = "kitab"
 version = "0.0.1"
-authors = ["nolash <dev@holbrook.no>"]
+authors = ["Louis Holbrook <dev@holbrook.no>"]
 edition = "2021"
 rust-version = "1.60"
+license = "GPL-3.0-or-later"
+documentation = "https://defalsify.org/doc/crates/kitab"
+description = "CLI tool for portable media file metadata"
+repository = "https://git.defalsify.org/kitab"
+categories = ["filesystem", "command-line-utilities", "data-structures"]
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
