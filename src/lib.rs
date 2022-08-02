@@ -96,7 +96,14 @@
 //!
 //! `kitab` uses [env_logger](env_logger). Loglevel can be set using the
 //! `RUST_LOG` environment variable to see what's going on when running the tool.
+//!
+//! ## Caveats
+//!
+//! For now only linux is supported.
 #![crate_name = "kitab"]
+
+#[cfg(not(target_os = "linux"))]
+compile_error!("only linux is supported for now");
 
 pub mod meta;
 
