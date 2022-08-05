@@ -70,6 +70,27 @@ fn args_setup() -> ArgMatches<'static> {
         );
     o = o.subcommand(o_apply);
 
+    let mut o_entry = (
+       SubCommand::with_name("new")
+        .about("add metadata for file")
+        .version("0.0.1")
+        );
+    o_entry = o_entry.arg(clap::Arg::with_name("validators")
+         .short("s")
+         .long("src")
+         .value_name("Add given validator engine")
+         .multiple(true)
+         .takes_value(true)
+         );
+
+    o_entry = o_entry.arg(
+        Arg::with_name("PATH")
+        .help("Path to operate on")
+        .required(true)
+        .index(1)
+        );
+    o = o.subcommand(o_entry);
+
     o.get_matches()
 }
 
@@ -226,6 +247,13 @@ fn exec_import(p: &Path, index_path: &Path) {
     }
 }
 
+fn exec_entry(p: &Path, index_path: &Path) -> bool {
+    if !p.is_file() {
+        return false; 
+    }
+    true
+}
+
 fn main() {
     env_logger::init();
 
@@ -249,6 +277,17 @@ fn main() {
             let p = str_to_path(v);
             info!("apply from path {:?}", &p);
             if !exec_apply(p.as_path(), index_dir.as_path()) {
+                r = false; 
+            }
+        },
+        _ => {},
+    }
+
+    match args.subcommand_matches("new") {
+        Some(v) => {
+            let p = str_to_path(v);
+            info!("new metadata for path {:?}", &p);
+            if !exec_entry(p.as_path(), index_dir.as_path()) {
                 r = false; 
             }
         },
