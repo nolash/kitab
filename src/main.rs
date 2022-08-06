@@ -2,6 +2,7 @@ use std::default;
 use std::fs::{
     File,
     create_dir_all,
+    metadata,
 };
 use std::io::Write;
 use std::path::{
@@ -23,6 +24,7 @@ use hex;
 use log::{
     debug,
     info,
+    warn,
 };
 
 use biblatex::EntryType;
@@ -146,12 +148,13 @@ fn store(index_path: &Path, m: &MetaData) {
 }
 
 fn exec_import_xattr(f: &Path, index_path: &Path) -> bool {
-    let m = MetaData::from_xattr(f);
-    match m.typ() {
-        EntryType::Unknown(v) => {
+    let m = match MetaData::from_xattr(f) {
+        Ok(r) => {
+            r
+        }
+        Err(e) => {
             return false;
-        },
-        _ => {},
+        }
     };
 
     debug!("successfully processed xattr import source");
@@ -234,13 +237,23 @@ fn exec_import(p: &Path, index_path: &Path) {
         .filter(|e| !e.file_type().is_dir()) {
 
         let fp = entry.path();
-        debug!("processing {:?}", fp);
+        debug!("attempt xattr import {:?}", fp);
         if exec_import_xattr(fp, index_path) {
             continue;
         }
+
+        let st = entry.metadata().unwrap();
+        if st.len() > 1048576 {
+            warn!("skipping metadata content probe for file >1MB");
+            continue;
+        }
+
+        debug!("attempt rdf import {:?}", fp);
         if exec_import_rdf(fp, index_path) {
             continue;
         } 
+
+        debug!("attempt biblatex import {:?}", fp);
         if exec_import_biblatex(fp, index_path) {
             continue;
         }
@@ -270,6 +283,7 @@ fn main() {
         },
         _ => {},
     }
+
 
     let mut r = true;
     match args.subcommand_matches("apply") {

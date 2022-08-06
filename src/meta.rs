@@ -36,7 +36,7 @@ use crate::dc::{
     DC_XATTR_TYPE,
     DC_XATTR_MEDIATYPE,
 };
-
+use crate::error::ParseError;
 use crate::digest;
 
 use log::{
@@ -64,9 +64,6 @@ pub struct MetaData {
     publish_date: PublishDate,
 }
 
-//pub fn check_xattr() {
-
-//}
 
 /// Generates the native `sha512` digest of a file.
 ///
@@ -230,14 +227,16 @@ impl MetaData {
     }
 
     /// Instantiate metadata from the extended attributes of the file in `filepath`.
-    pub fn from_xattr(filepath: &path::Path) -> MetaData {
+    pub fn from_xattr(filepath: &path::Path) -> Result<MetaData, ParseError> {
 
         let mut title: String = String::new();
         let mut author: String = String::new();
         let mut typ: EntryType = EntryType::Unknown(String::new());
         let filename: FileName; 
 
+        debug!("Calculate digest for file {:?}",  &filepath);
         let digest = digest_from_path(filepath);
+        debug!("Calculated digest {} for file {:?}", hex::encode(&digest), &filepath);
 
         filename = filepath.file_name()
             .unwrap()
@@ -274,6 +273,9 @@ impl MetaData {
         }
 
         let mut metadata = MetaData::new(title.as_str(), author.as_str(), typ, digest, Some(filename));
+        if !metadata.validate() {
+            return Err(ParseError{});
+        }
 
         match xattr::get(filepath, "user.dcterms:subject") {
             Ok(v) => {
@@ -317,7 +319,7 @@ impl MetaData {
         #[cfg(feature = "magic")]
         metadata.set_mime_magic(filepath);
 
-        metadata
+        Ok(metadata)
     }
 
 
@@ -446,6 +448,19 @@ impl MetaData {
         }
         Ok(m)
     }
+
+
+    /// Check whether a Metadata instance represents a valid entry.
+    pub fn validate(&self) -> bool {
+        let empty = String::new();
+        if self.title() == empty {
+            return false;
+        }
+        if self.author() == empty {
+            return false;
+        }
+        true
+    }
 }
 
 impl fmt::Debug for MetaData {
@@ -469,7 +484,7 @@ mod tests {
     #[test]
     fn test_metadata_create() {
         let s = path::Path::new("testdata/bitcoin.pdf");
-        let meta = MetaData::from_xattr(s);
+        let meta = MetaData::from_xattr(s).unwrap();
         assert_eq!(meta.dc.title, "Bitcoin: A Peer-to-Peer Electronic Cash System");
         assert_eq!(meta.dc.author, "Satoshi Nakamoto");
         assert_eq!(meta.fingerprint(), String::from("2ac531ee521cf93f8419c2018f770fbb42c65396178e079a416e7038d3f9ab9fc2c35c4d838bc8b5dd68f4c13759fe9cdf90a46528412fefe1294cb26beabf4e"));
@@ -490,7 +505,7 @@ mod tests {
         m.set_language("nb-NO");
         m.to_xattr(fp);
         
-        let m_check = MetaData::from_xattr(fp);
+        let m_check = MetaData::from_xattr(fp).unwrap();
         assert_eq!(m_check.title(), "foo");
         assert_eq!(m_check.author(), "bar");
         assert_eq!(m_check.fingerprint(), digest_hex);
@@ -515,7 +530,7 @@ mod tests {
     #[test]
     fn test_metadata_xattr_magic() {
         let s = path::Path::new("testdata/bitcoin.pdf");
-        let meta = MetaData::from_xattr(s);
+        let meta = MetaData::from_xattr(s).unwrap();
 
         #[cfg(feature = "magic")]
         {
@@ -523,7 +538,7 @@ mod tests {
             let f = NamedTempFile::new_in(".").unwrap();
             let fp = f.path();
             write(&f, &[0, 1, 2, 3]);
-            let meta_empty = MetaData::from_xattr(fp);
+            let meta_empty = MetaData::from_xattr(fp).unwrap();
             assert_eq!(meta_empty.mime().unwrap(), "application/octet-stream"); 
         }
     }
