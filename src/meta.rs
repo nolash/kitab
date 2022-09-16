@@ -244,7 +244,14 @@ impl MetaData {
             .into_string()
             .unwrap();
 
-        let title_src = xattr::get(filepath, "user.dcterms:title").unwrap();
+        let title_src = match xattr::get(filepath, "user.dcterms:title") {
+            Ok(v) => {
+                v
+            },
+            Err(e) => {
+                return Err(ParseError{});
+            }
+        };
         match title_src {
             Some(v) => {
                 let s = std::str::from_utf8(&v).unwrap();

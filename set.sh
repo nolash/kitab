@@ -13,6 +13,12 @@ if [ ! -z "$title" ]; then
 	setfattr -n user.dcterms:title -v "$title" "$f"
 fi
 
+getfattr -n user.dcterms:title "$f" &> /dev/null
+if [ "$?" -gt "0" ]; then
+	>&2 echo no title set, exiting.
+	exit 0
+fi
+
 echo -n "Author: "
 read author
 if [ ! -z "$author" ]; then
