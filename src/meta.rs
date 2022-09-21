@@ -332,7 +332,17 @@ impl MetaData {
 
     /// Applies the metadata as extended file attributes of the file in `filepath`.
     ///
+    /// Will always export:
     ///
+    /// * [title](DCMetaData::DC_XATTR_TITLE)
+    /// * [creator](DCMetaData::DC_XATTR_CREATOR)
+    /// * [category of file contents](DCMetaData::DC_XATTR_TYPE)
+    ///
+    /// Will export, if defined:
+    ///
+    /// * [language](DCMetaData::DC_XATTR_LANGUAGE)
+    /// * [MIME type of file](DCMetaData::DC_XATTR_MEDIATYPE)
+    /// * [A description of the subject matter of the file contents](DCMetaData::DC_XATTR_SUBJECT)
     pub fn to_xattr(&self, filepath: &path::Path) -> Result<(), std::io::Error> {
         let filename = filepath.file_name()
             .unwrap()

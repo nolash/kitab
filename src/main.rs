@@ -61,7 +61,7 @@ fn args_setup() -> ArgMatches<'static> {
 
     let mut o_apply = (
         SubCommand::with_name("apply")
-        .about("import information from file")
+        .about("Apply metadata on matching files")
         .version("0.0.1")
         );
     o_apply = o_apply.arg(
@@ -72,34 +72,34 @@ fn args_setup() -> ArgMatches<'static> {
         );
     o = o.subcommand(o_apply);
 
-    let mut o_entry = (
-       SubCommand::with_name("new")
-        .about("add metadata for file")
-        .version("0.0.1")
-        );
-    o_entry = o_entry.arg(clap::Arg::with_name("validators")
-         .short("s")
-         .long("src")
-         .value_name("Add given validator engine")
-         .multiple(true)
-         .takes_value(true)
-         );
-
-    o_entry = o_entry.arg(
-        Arg::with_name("PATH")
-        .help("Path to operate on")
-        .required(true)
-        .index(1)
-        );
-    o = o.subcommand(o_entry);
+//    let mut o_entry = (
+//       SubCommand::with_name("new")
+//        .about("add metadata for file")
+//        .version("0.0.1")
+//        );
+//
+//    o_entry = o_entry.arg(clap::Arg::with_name("validators")
+//         .short("s")
+//         .long("src")
+//         .value_name("Add given validator engine")
+//         .multiple(true)
+//         .takes_value(true)
+//         );
+//
+//    o_entry = o_entry.arg(
+//        Arg::with_name("PATH")
+//        .help("Path to operate on")
+//        .required(true)
+//        .index(1)
+//        );
+//    o = o.subcommand(o_entry);
 
     o.get_matches()
 }
 
 // commands
 // kitab import <file> - attempt in order import rdf, import spec
-    // kitab export <file> - export rdf/turtle
-    // kitab apply <path> - recursively 
+// kitab apply <path> - recursively 
 
     fn resolve_directory(args: &ArgMatches) -> PathBuf {
         match BaseDirs::new() {
