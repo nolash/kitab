@@ -46,6 +46,14 @@ fn args_setup() -> ArgMatches<'static> {
     let mut o = App::new("kitab");
     o = o.version("0.0.1");
     o = o.author("Louis Holbrook <dev@holbrook.no>");
+
+    o = o.arg(clap::Arg::with_name("store")
+        .short("s")
+        .long("store")
+        .value_name("Store location")
+        .takes_value(true)
+        );
+        
     let mut o_import = (
         SubCommand::with_name("import")
         .about("import information from file")
@@ -79,8 +87,7 @@ fn args_setup() -> ArgMatches<'static> {
 //        );
 //
 //    o_entry = o_entry.arg(clap::Arg::with_name("validators")
-//         .short("s")
-//         .long("src")
+//         .long("validator")
 //         .value_name("Add given validator engine")
 //         .multiple(true)
 //         .takes_value(true)
@@ -102,6 +109,19 @@ fn args_setup() -> ArgMatches<'static> {
 // kitab apply <path> - recursively 
 
     fn resolve_directory(args: &ArgMatches) -> PathBuf {
+        let r = match args.value_of("store") {
+            Some(v) => {
+                v
+            },
+            _ => {
+                ""
+            },
+        };
+        if r.len() != 0 {
+            return PathBuf::from(r)
+        }
+        
+
         match BaseDirs::new() {
             Some(v) => {
             let d = v.data_dir();
