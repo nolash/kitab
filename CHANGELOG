@@ -1,0 +1,6 @@
+- 0.0.1
+	- rdf/turtle native format with directory store
+	- import from biblatex
+	- import from xattr
+	- recursive apply from store to xattr
+	- sha512 and sha256 digest
