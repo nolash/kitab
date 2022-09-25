@@ -12,6 +12,7 @@ use log::error;
 pub enum RecordDigest {
     Sha512(Vec<u8>),
     Sha256(Vec<u8>),
+    MD5(Vec<u8>),
     SwarmHash(Vec<u8>),
     Empty,
 }
@@ -61,6 +62,16 @@ pub fn from_urn(urn: &str) -> Result<RecordDigest, ParseError> {
             }
 
             RecordDigest::Sha256(digest)
+        },
+        Some("md5") => {
+            let digest_hex = v.next().unwrap();
+            let digest = hex::decode(digest_hex).unwrap();
+
+            if digest.len() != 16 {
+                return Err(ParseError);
+            }
+
+            RecordDigest::MD5(digest)
         },
         Some("bzz") => {
             let digest_hex = v.next().unwrap();

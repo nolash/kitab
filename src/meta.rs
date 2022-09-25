@@ -20,9 +20,10 @@ use std::io::{
     BufReader,
 };
 use unic_langid_impl::LanguageIdentifier;
-use biblatex::EntryType;
 use std::str::FromStr;
 use std::os::linux::fs::MetadataExt;
+
+use biblatex::EntryType;
 
 #[cfg(feature = "magic")]
 use tree_magic;
@@ -96,7 +97,7 @@ impl MetaData {
     /// * `entry_type` - Maps to the [DCMetaData::typ] field.
     /// * `digest` - The digest of the media file.
     /// * `filename` - The client's optional local file name for the media.
-    pub fn new(title: &str, author: &str, entry_type: EntryType, digest: Vec<u8>, filename: Option<FileName>) -> MetaData {
+    pub fn new(title: &str, author: &str, entry_type: EntryType, digest: digest::RecordDigest, filename: Option<FileName>) -> MetaData {
         let dc = DCMetaData::new(title, author, entry_type);
 
         let mut m = MetaData{
@@ -134,8 +135,8 @@ impl MetaData {
 
     /// Set the digest as [digest::RecordDigest::Sha512](digest::RecordDigest::Sha512) instance of the provided
     /// fingerprint.
-    pub fn set_fingerprint(&mut self, fingerprint: Vec<u8>) {
-        self.digest = digest::from_vec(fingerprint).unwrap();
+    pub fn set_fingerprint(&mut self, fingerprint: digest::RecordDigest) {
+        self.digest = fingerprint; //digest::from_vec(fingerprint).unwrap();
     }
 
     /// Set the digest from the given URN string.
@@ -220,6 +221,9 @@ impl MetaData {
             digest::RecordDigest::Sha256(v) => {
                 return hex::encode(&v);
             },
+            digest::RecordDigest::MD5(v) => {
+                return hex::encode(&v);
+            },
             digest::RecordDigest::SwarmHash(v) => {
                 return hex::encode(&v);
             },
@@ -279,7 +283,7 @@ impl MetaData {
             None => {},
         }
 
-        let mut metadata = MetaData::new(title.as_str(), author.as_str(), typ, digest, Some(filename));
+        let mut metadata = MetaData::new(title.as_str(), author.as_str(), typ, digest::RecordDigest::Sha512(digest), Some(filename));
         if !metadata.validate() {
             return Err(ParseError{});
         }

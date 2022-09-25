@@ -40,6 +40,8 @@ use kitab::meta::{
     MetaData,
     digest_from_path,
 };
+use kitab::digest::from_urn;
+use kitab::digest::RecordDigest;
 
 
 fn args_setup() -> ArgMatches<'static> {
@@ -60,10 +62,18 @@ fn args_setup() -> ArgMatches<'static> {
         .version("0.0.1")
         );
     o_import = o_import.arg(
+        Arg::with_name("setdigest")
+        .short("d")
+        .long("digest")
+        .help("Explicitly set digest")
+        .multiple(true)
+        .takes_value(true)
+        .number_of_values(1)
+        );
+    o_import = o_import.arg(
         Arg::with_name("PATH")
         .help("Path to operate on")
         .required(true)
-        .index(1)
         );
     o = o.subcommand(o_import);
 
@@ -204,9 +214,9 @@ fn exec_import_rdf(f: &Path, index_path: &Path) -> bool {
     true
 }
 
-fn exec_import_biblatex(f: &Path, index_path: &Path) -> bool {
+fn exec_import_biblatex(f: &Path, index_path: &Path, digests: &Vec<RecordDigest>) -> bool {
     let f = File::open(f).unwrap();
-    let entries = match biblatex_read_all(&f) {
+    let entries = match biblatex_read_all(&f, digests) {
         Ok(v) => {
             v
         },
@@ -250,7 +260,7 @@ fn exec_apply(p: &Path, index_path: &Path) -> bool {
     true
 }
 
-fn exec_import(p: &Path, index_path: &Path) {
+fn exec_import(p: &Path, index_path: &Path, digests: Vec<RecordDigest>) {
     for entry in WalkDir::new(&p)
         .into_iter()
         .filter_map(Result::ok)
@@ -258,6 +268,7 @@ fn exec_import(p: &Path, index_path: &Path) {
 
         let fp = entry.path();
         debug!("attempt xattr import {:?}", fp);
+        //if exec_import_xattr(fp, index_path, &digests) {
         if exec_import_xattr(fp, index_path) {
             continue;
         }
@@ -269,12 +280,13 @@ fn exec_import(p: &Path, index_path: &Path) {
         }
 
         debug!("attempt rdf import {:?}", fp);
-        if exec_import_rdf(fp, index_path) {
+        //if exec_import_rdf(fp, index_path, &digests) {
+        if exec_import_rdf(fp, index_path) { 
             continue;
         } 
 
         debug!("attempt biblatex import {:?}", fp);
-        if exec_import_biblatex(fp, index_path) {
+        if exec_import_biblatex(fp, index_path, &digests) {
             continue;
         }
     }
@@ -294,15 +306,32 @@ fn main() {
 
     let index_dir = resolve_directory(&args);
     info!("have index directory {:?}", &index_dir);
-    
+   
     match args.subcommand_matches("import") {
-        Some(v) => {
-            let p = str_to_path(v);
+        Some(arg) => {
+            let p = str_to_path(&arg);
+            let mut digests: Vec<RecordDigest> = Vec::new();
+            match arg.values_of("setdigest") {
+                Some(r) => {
+                    for digest_str in r {
+                        match from_urn(&digest_str) {
+                            Ok(digest) => {
+                                info!("using digest {}", digest_str);
+                                digests.push(digest);
+                            },
+                            Err(e) => {
+                                panic!("invalid digest URN: {:?}", e);
+                            },
+                        }
+                    }
+                },
+                None => {},
+            };
             info!("import from path {:?}", &p);
-            return exec_import(&p, index_dir.as_path());
+            return exec_import(&p, index_dir.as_path(), digests);
         },
         _ => {},
-    }
+    };
 
 
     let mut r = true;
