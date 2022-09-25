@@ -51,7 +51,12 @@ version = "0.7.1"
 version = "0.2.3"
 optional = true
 
+[dependencies.md5]
+version = "0.7.0"
+optional = true
+
 [features]
 #rdf = ["rio_turtle", "rio_api"]
 #dump_bibtex = ["biblatex"]
 magic = ["tree_magic"]
+digest_md5 = ["md5"]

@@ -38,10 +38,11 @@ use kitab::biblatex::{
 };
 use kitab::meta::{
     MetaData,
-    digest_from_path,
+    digests_from_path,
 };
 use kitab::digest::from_urn;
 use kitab::digest::RecordDigest;
+use kitab::digest::DigestType;
 
 
 fn args_setup() -> ArgMatches<'static> {
@@ -235,27 +236,30 @@ fn exec_import_biblatex(f: &Path, index_path: &Path, digests: &Vec<RecordDigest>
     true
 }
 
-fn exec_apply(p: &Path, index_path: &Path) -> bool {
+fn exec_apply(p: &Path, index_path: &Path, mut extra_digest_types: Vec<DigestType>) -> bool {
+    let mut digest_types: Vec<DigestType> = vec!(DigestType::Sha512);
+    digest_types.append(&mut extra_digest_types);
     for entry in WalkDir::new(&p)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| !e.file_type().is_dir()) {
             let ep = entry.path();
-            let z = digest_from_path(ep);
-            let z_hex = hex::encode(z);
+            for digest in digests_from_path(ep, &digest_types) {
+                let z_hex = hex::encode(digest.fingerprint());
 
-            let fp = index_path.join(&z_hex);
-            match fp.canonicalize() {
-                Ok(v) => {
-                    let f = File::open(&v).unwrap();
-                    let m = rdf_read(f);
-                    info!("apply {:?} -> {:?} for {:?}", entry, &m, z_hex);
-                    m.to_xattr(&ep);
-                },
-                Err(e) => {
-                    debug!("metadata not found for {:?} -> {:?}", entry, z_hex);
-                },
-            };
+                let fp = index_path.join(&z_hex);
+                match fp.canonicalize() {
+                    Ok(v) => {
+                        let f = File::open(&v).unwrap();
+                        let m = rdf_read(f);
+                        info!("apply {:?} -> {:?} for {:?}", entry, &m, &digest);
+                        m.to_xattr(&ep);
+                    },
+                    Err(e) => {
+                        debug!("metadata not found for {:?} -> {:?}", entry, z_hex);
+                    },
+                };
+            }
     }
     true
 }
@@ -339,7 +343,7 @@ fn main() {
         Some(v) => {
             let p = str_to_path(v);
             info!("apply from path {:?}", &p);
-            if !exec_apply(p.as_path(), index_dir.as_path()) {
+            if !exec_apply(p.as_path(), index_dir.as_path(), vec!()) {
                 r = false; 
             }
         },

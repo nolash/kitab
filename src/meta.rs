@@ -25,6 +25,9 @@ use std::os::linux::fs::MetadataExt;
 
 use biblatex::EntryType;
 
+#[cfg(feature = "md5")]
+use md5::Context;
+
 #[cfg(feature = "magic")]
 use tree_magic;
 
@@ -65,13 +68,36 @@ pub struct MetaData {
     publish_date: PublishDate,
 }
 
+pub fn digests_from_path(filepath: &path::Path, digest_types: &Vec<digest::DigestType>) -> Vec<digest::RecordDigest> {
+    let mut r: Vec<digest::RecordDigest> = vec!();
+    for v in digest_types {
+        match v {
+            digest::DigestType::Sha512 => {
+                let digest = digest_sha512_from_path(filepath);
+                r.push(digest);
+            },
+            #[cfg(feature = "md5")]
+            digest::DigestType::MD5 => {
+                let digest = digest_md5_from_path(filepath);
+                r.push(digest);
+            },
+        };
+    }
+    r
+}
+
+#[cfg(feature = "md5")]
+pub fn digest_md5_from_path(filepath: &path::Path) -> digest::RecordDigest {
+    let ctx = md5::Context::new();
+    digest::RecordDigest::MD5(vec!())
+}
 
 /// Generates the native `sha512` digest of a file.
 ///
 /// # Arguments
 ///
 /// * `filepath` - Absolute path to file to calculate digest for.
-pub fn digest_from_path(filepath: &path::Path) -> Vec<u8> {
+pub fn digest_sha512_from_path(filepath: &path::Path) -> digest::RecordDigest {
     let mut h = Sha512::new();
     let st = metadata(filepath).unwrap();
     let bs: u64 = st.st_blksize();
@@ -84,7 +110,8 @@ pub fn digest_from_path(filepath: &path::Path) -> Vec<u8> {
         h.update(&b[..c]);
         i += c;
     }
-    h.finalize().to_vec()
+    let r = h.finalize().to_vec();
+    digest::RecordDigest::Sha512(r)
 }
 
 impl MetaData {
@@ -209,29 +236,10 @@ impl MetaData {
         self.dc.language.clone()
     }
 
-    /// Returns the digest value of the media as a hex-encoded string.
     ///
-    /// TODO: implememt in fmt for digest instead
     pub fn urn(&self) -> String {
-        match &self.digest {
-            digest::RecordDigest::Empty => {
-                return String::new();
-            },
-            digest::RecordDigest::Sha512(v) => {
-                return String::from("sha512:") + hex::encode(&v).as_str();
-            },
-            digest::RecordDigest::Sha256(v) => {
-                return String::from("sha256:") + hex::encode(&v).as_str();
-            },
-            digest::RecordDigest::MD5(v) => {
-                return String::from("md5:") + hex::encode(&v).as_str();
-            },
-            digest::RecordDigest::SwarmHash(v) => {
-                return hex::encode(&v);
-            },
-        }
+        self.digest.urn()
     }
-
 
     ///
     pub fn fingerprint(&self) -> String {
@@ -248,8 +256,8 @@ impl MetaData {
         let filename: FileName; 
 
         debug!("Calculate digest for file {:?}",  &filepath);
-        let digest = digest_from_path(filepath);
-        debug!("Calculated digest {} for file {:?}", hex::encode(&digest), &filepath);
+        let digest = digest_sha512_from_path(filepath);
+        debug!("Calculated digest {} for file {:?}", hex::encode(digest.fingerprint()), &filepath);
 
         filename = filepath.file_name()
             .unwrap()
@@ -292,7 +300,7 @@ impl MetaData {
             None => {},
         }
 
-        let mut metadata = MetaData::new(title.as_str(), author.as_str(), typ, digest::RecordDigest::Sha512(digest), Some(filename));
+        let mut metadata = MetaData::new(title.as_str(), author.as_str(), typ, digest, Some(filename));
         if !metadata.validate() {
             return Err(ParseError::new("invalid input"));
         }

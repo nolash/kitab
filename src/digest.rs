@@ -1,4 +1,5 @@
 use std::marker::Copy;
+use std::fmt;
 
 use crate::error::ParseError;
 
@@ -9,6 +10,12 @@ use sha2::{
 };
 
 use log::error;
+
+pub enum DigestType {
+    Sha512,
+    #[cfg(feature="digest_md5")]
+    MD5,
+}
 
 /// Encapsulations of supported digests for digest data.
 pub enum RecordDigest {
@@ -61,8 +68,36 @@ impl RecordDigest {
             },
         }
     }
+
+    /// Returns the digest value of the media as a hex-encoded string.
+    ///
+    /// TODO: implememt in fmt for digest instead
+    pub fn urn(&self) -> String {
+        match self {
+            RecordDigest::Empty => {
+                return String::new();
+            },
+            RecordDigest::Sha512(v) => {
+                return String::from("sha512:") + hex::encode(&v).as_str();
+            },
+            RecordDigest::Sha256(v) => {
+                return String::from("sha256:") + hex::encode(&v).as_str();
+            },
+            RecordDigest::MD5(v) => {
+                return String::from("md5:") + hex::encode(&v).as_str();
+            },
+            RecordDigest::SwarmHash(v) => {
+                return hex::encode(&v);
+            },
+        }
+    }
 }
 
+impl fmt::Debug for RecordDigest {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.urn())
+    }
+}
 
 /// Create a [RecordDigest::Sha512](RecordDigest::Sha512) instance from the raw digest data.
 ///
