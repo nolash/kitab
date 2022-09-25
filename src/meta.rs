@@ -216,13 +216,13 @@ impl MetaData {
                 return String::new();
             },
             digest::RecordDigest::Sha512(v) => {
-                return hex::encode(&v);
+                return String::from("sha512:") + hex::encode(&v).as_str();
             },
             digest::RecordDigest::Sha256(v) => {
-                return hex::encode(&v);
+                return String::from("sha256:") + hex::encode(&v).as_str();
             },
             digest::RecordDigest::MD5(v) => {
-                return hex::encode(&v);
+                return String::from("md5:") + hex::encode(&v).as_str();
             },
             digest::RecordDigest::SwarmHash(v) => {
                 return hex::encode(&v);
@@ -500,6 +500,7 @@ mod tests {
         File,
         write
     };
+    use crate::digest;
     use env_logger;
 
     #[test]
@@ -508,7 +509,7 @@ mod tests {
         let meta = MetaData::from_xattr(s).unwrap();
         assert_eq!(meta.dc.title, "Bitcoin: A Peer-to-Peer Electronic Cash System");
         assert_eq!(meta.dc.author, "Satoshi Nakamoto");
-        assert_eq!(meta.fingerprint(), String::from("2ac531ee521cf93f8419c2018f770fbb42c65396178e079a416e7038d3f9ab9fc2c35c4d838bc8b5dd68f4c13759fe9cdf90a46528412fefe1294cb26beabf4e"));
+        assert_eq!(meta.fingerprint(), String::from("sha512:2ac531ee521cf93f8419c2018f770fbb42c65396178e079a416e7038d3f9ab9fc2c35c4d838bc8b5dd68f4c13759fe9cdf90a46528412fefe1294cb26beabf4e"));
     }
 
     #[test]
@@ -520,7 +521,8 @@ mod tests {
         let fp = f.path();
         let fps = String::from(fp.to_str().unwrap());
 
-        let mut m = MetaData::new("foo", "bar", EntryType::Article, digest, Some(fps));
+        let digest_sha = digest::from_vec(digest).unwrap();
+        let mut m = MetaData::new("foo", "bar", EntryType::Article, digest_sha, Some(fps));
         m.set_subject("baz");
         m.set_mime_str("foo/bar");
         m.set_language("nb-NO");
@@ -529,7 +531,7 @@ mod tests {
         let m_check = MetaData::from_xattr(fp).unwrap();
         assert_eq!(m_check.title(), "foo");
         assert_eq!(m_check.author(), "bar");
-        assert_eq!(m_check.fingerprint(), digest_hex);
+        assert_eq!(m_check.fingerprint(), String::from("sha512:") + digest_hex);
         assert_eq!(m_check.typ(), EntryType::Article);
         assert_eq!(m_check.subject().unwrap(), "baz");
         assert_eq!(m_check.mime().unwrap(), "foo/bar");
@@ -559,7 +561,14 @@ mod tests {
             let f = NamedTempFile::new_in(".").unwrap();
             let fp = f.path();
             write(&f, &[0, 1, 2, 3]);
-            let meta_empty = MetaData::from_xattr(fp).unwrap();
+            let meta_empty = match MetaData::from_xattr(fp) {
+                Ok(v) => {
+                    v
+                },
+                Err(e) => {
+                    panic!("{:?}", e);
+                },
+            };
             assert_eq!(meta_empty.mime().unwrap(), "application/octet-stream"); 
         }
     }

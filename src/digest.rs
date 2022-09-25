@@ -1,3 +1,5 @@
+use std::marker::Copy;
+
 use crate::error::ParseError;
 
 use sha2::{
@@ -17,6 +19,27 @@ pub enum RecordDigest {
     Empty,
 }
 
+impl Clone for RecordDigest {
+    fn clone(&self) -> RecordDigest {
+        match self {
+            RecordDigest::Empty => {
+                RecordDigest::Empty
+            },
+            RecordDigest::Sha512(v) => {
+                RecordDigest::Sha512(v.to_vec())
+            },
+            RecordDigest::Sha256(v) => {
+                RecordDigest::Sha256(v.to_vec())
+            },
+            RecordDigest::MD5(v) => {
+                RecordDigest::MD5(v.to_vec())
+            },
+            RecordDigest::SwarmHash(v) => {
+                RecordDigest::SwarmHash(v.to_vec())
+            },
+        }
+    }
+}
 
 
 /// Create a [RecordDigest::Sha512](RecordDigest::Sha512) instance from the raw digest data.

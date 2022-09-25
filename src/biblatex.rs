@@ -19,7 +19,14 @@ use crate::digest::RecordDigest;
 use crate::digest::from_urn;
 
 fn parse_digest(entry: &Entry) -> RecordDigest {
-    let note = entry.get("note").unwrap();
+    let note = match entry.get("note") {
+        Some(v) => {
+            v
+        },
+        None => {
+            return RecordDigest::Empty;
+        },
+    };
     let note_s = String::from_chunks(note).unwrap();
     let mut digest_val = note_s.split(":");
 
@@ -115,6 +122,9 @@ pub fn read_all(mut r: impl Read, digests: &Vec<RecordDigest>) -> Result<Vec<Met
 //            },
         }
 
+        for v in digests {
+            use_digests.push(v.clone());
+        }
         let title = e.title().unwrap();
         let title_s = String::from_chunks(title).unwrap();
 
@@ -141,4 +151,30 @@ pub fn read_all(mut r: impl Read, digests: &Vec<RecordDigest>) -> Result<Vec<Met
         }
     }
     Ok(rr)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::read_all;
+    use crate::digest;
+    use env_logger;
+
+    #[test]
+    fn test_multi_digest() {
+        let d_hex = "acbd18db4cc2f85cedef654fccc4a4d8";
+        let d = digest::RecordDigest::MD5(hex::decode(d_hex).unwrap());
+        let d_sha_hex = "f7fbba6e0636f890e56fbbf3283e524c6fa3204ae298382d624741d0dc6638326e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7";
+        let d_sha = digest::from_vec(hex::decode(d_sha_hex).unwrap()).unwrap();
+
+        let biblatex_src = "@article{
+    foo,
+    title={bar},
+    author={Guybrush Threepwood},
+}
+";
+        let digests = vec!(d, d_sha);
+        let r = read_all(biblatex_src.as_bytes(), &digests).unwrap();
+
+        assert_eq!(r.len(), 2);
+    }
 }

@@ -35,13 +35,15 @@ mod tests {
         FileStore,
         MetaData,
     };
+    use crate::digest;
     use std::io::Write;
 
     #[test]
     fn test_writer() {
         let mut digest = Vec::with_capacity(64);
         digest.resize(64, 0x2a);
-        let m = MetaData::new("foo", "bar", EntryType::Article, Vec::from(digest), None);
+        let digest_sha = digest::from_vec(Vec::from(digest)).unwrap();
+        let m = MetaData::new("foo", "bar", EntryType::Article, digest_sha, None);
         let dir = tempdir().unwrap();
         let fp = dir.path();
         let fs = FileStore::new(&fp);

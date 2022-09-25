@@ -272,6 +272,7 @@ mod tests {
         read,
     };
     use super::MetaData;
+    use crate::digest;
     use std::io::stdout;
     use std::fs::File;
     use std::default::Default;
@@ -282,7 +283,8 @@ mod tests {
     fn test_turtle_write() {
         let mut digest = Vec::with_capacity(64);
         digest.resize(64, 0x2a);
-        let mut m = MetaData::new("foo", "bar", EntryType::Article, Vec::from(digest), None);
+        let digest_sha = digest::from_vec(Vec::from(digest)).unwrap();
+        let mut m = MetaData::new("foo", "bar", EntryType::Article, digest_sha, None);
         m.set_subject("baz");
         m.set_mime_str("foo/bar");
         m.set_language("nb-NO");
