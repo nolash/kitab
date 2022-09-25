@@ -41,6 +41,28 @@ impl Clone for RecordDigest {
     }
 }
 
+impl RecordDigest {
+    pub fn fingerprint(&self) -> Vec<u8> {
+        match self {
+            RecordDigest::Empty => {
+                return vec!();
+            },
+            RecordDigest::Sha512(v) => {
+                return v.to_vec();
+            },
+            RecordDigest::Sha256(v) => {
+                return v.to_vec();
+            },
+            RecordDigest::MD5(v) => {
+                return v.to_vec();
+            },
+            RecordDigest::SwarmHash(v) => {
+                return v.to_vec();
+            },
+        }
+    }
+}
+
 
 /// Create a [RecordDigest::Sha512](RecordDigest::Sha512) instance from the raw digest data.
 ///
@@ -48,7 +70,7 @@ impl Clone for RecordDigest {
 pub fn from_vec(v: Vec<u8>) -> Result<RecordDigest, ParseError> {
     let sz = Sha512::output_size();
     if v.len() != sz {
-        return Err(ParseError);
+        return Err(ParseError::new("invalid digest size"));
     }
     Ok(RecordDigest::Sha512(v))
 }
@@ -71,7 +93,7 @@ pub fn from_urn(urn: &str) -> Result<RecordDigest, ParseError> {
                     vv
                 },
                 Err(e) => {
-                    return Err(ParseError);
+                    return Err(ParseError::new("invalid sha512 digest"));
                 },
             }
         },
@@ -81,7 +103,7 @@ pub fn from_urn(urn: &str) -> Result<RecordDigest, ParseError> {
 
             let sz = Sha256::output_size();
             if digest.len() != sz {
-                return Err(ParseError);
+                return Err(ParseError::new("invalid sha256 digest"));
             }
 
             RecordDigest::Sha256(digest)
@@ -91,7 +113,7 @@ pub fn from_urn(urn: &str) -> Result<RecordDigest, ParseError> {
             let digest = hex::decode(digest_hex).unwrap();
 
             if digest.len() != 16 {
-                return Err(ParseError);
+                return Err(ParseError::new("invalid md5 digest"));
             }
 
             RecordDigest::MD5(digest)
@@ -101,7 +123,7 @@ pub fn from_urn(urn: &str) -> Result<RecordDigest, ParseError> {
             let digest = hex::decode(digest_hex).unwrap();
 
             if digest.len() != 32 {
-                return Err(ParseError);
+                return Err(ParseError::new("invalid bzz digest"));
             }
             
             RecordDigest::SwarmHash(digest)
@@ -110,7 +132,7 @@ pub fn from_urn(urn: &str) -> Result<RecordDigest, ParseError> {
             RecordDigest::Empty
         },
         Some(_) => {
-            return Err(ParseError);
+            return Err(ParseError::new("unknown digest type"));
         },
         None => {
             RecordDigest::Empty

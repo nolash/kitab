@@ -210,7 +210,9 @@ impl MetaData {
     }
 
     /// Returns the digest value of the media as a hex-encoded string.
-    pub fn fingerprint(&self) -> String {
+    ///
+    /// TODO: implememt in fmt for digest instead
+    pub fn urn(&self) -> String {
         match &self.digest {
             digest::RecordDigest::Empty => {
                 return String::new();
@@ -228,6 +230,13 @@ impl MetaData {
                 return hex::encode(&v);
             },
         }
+    }
+
+
+    ///
+    pub fn fingerprint(&self) -> String {
+        let digest_fingerprint = self.digest.fingerprint();
+        return hex::encode(digest_fingerprint);
     }
 
     /// Instantiate metadata from the extended attributes of the file in `filepath`.
@@ -253,7 +262,7 @@ impl MetaData {
                 v
             },
             Err(e) => {
-                return Err(ParseError{});
+                return Err(ParseError::new("title missing"));
             }
         };
         match title_src {
@@ -285,7 +294,7 @@ impl MetaData {
 
         let mut metadata = MetaData::new(title.as_str(), author.as_str(), typ, digest::RecordDigest::Sha512(digest), Some(filename));
         if !metadata.validate() {
-            return Err(ParseError{});
+            return Err(ParseError::new("invalid input"));
         }
 
         match xattr::get(filepath, "user.dcterms:subject") {
@@ -509,7 +518,8 @@ mod tests {
         let meta = MetaData::from_xattr(s).unwrap();
         assert_eq!(meta.dc.title, "Bitcoin: A Peer-to-Peer Electronic Cash System");
         assert_eq!(meta.dc.author, "Satoshi Nakamoto");
-        assert_eq!(meta.fingerprint(), String::from("sha512:2ac531ee521cf93f8419c2018f770fbb42c65396178e079a416e7038d3f9ab9fc2c35c4d838bc8b5dd68f4c13759fe9cdf90a46528412fefe1294cb26beabf4e"));
+        assert_eq!(meta.urn(), String::from("sha512:2ac531ee521cf93f8419c2018f770fbb42c65396178e079a416e7038d3f9ab9fc2c35c4d838bc8b5dd68f4c13759fe9cdf90a46528412fefe1294cb26beabf4e"));
+        assert_eq!(meta.fingerprint(), String::from("2ac531ee521cf93f8419c2018f770fbb42c65396178e079a416e7038d3f9ab9fc2c35c4d838bc8b5dd68f4c13759fe9cdf90a46528412fefe1294cb26beabf4e"));
     }
 
     #[test]
@@ -531,7 +541,8 @@ mod tests {
         let m_check = MetaData::from_xattr(fp).unwrap();
         assert_eq!(m_check.title(), "foo");
         assert_eq!(m_check.author(), "bar");
-        assert_eq!(m_check.fingerprint(), String::from("sha512:") + digest_hex);
+        assert_eq!(m_check.fingerprint(), digest_hex);
+        assert_eq!(m_check.urn(), String::from("sha512:") + digest_hex);
         assert_eq!(m_check.typ(), EntryType::Article);
         assert_eq!(m_check.subject().unwrap(), "baz");
         assert_eq!(m_check.mime().unwrap(), "foo/bar");

@@ -233,7 +233,7 @@ pub fn read_all(r: impl Read) -> Result<Vec<MetaData>, ParseError> {
     });
     // TODO: should check validity of all records
     if rr[0].fingerprint() == "" {
-        return Err(ParseError);
+        return Err(ParseError::new("empty fingerprint"));
     }
     Ok(rr)
 }

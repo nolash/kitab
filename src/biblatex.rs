@@ -28,36 +28,7 @@ fn parse_digest(entry: &Entry) -> RecordDigest {
         },
     };
     let note_s = String::from_chunks(note).unwrap();
-    let mut digest_val = note_s.split(":");
-
-    //let mut digest = Vec::new();
-    let mut digest: RecordDigest = RecordDigest::Empty;
-
-    match digest_val.next() {
-        Some(v) => {
-//            if v == "sha512" {
-//                let digest_hex = digest_val.next().unwrap();
-//                let mut digest_imported = hex::decode(digest_hex).unwrap();
-//                digest.append(&mut digest_imported);
-//                debug!("parsed digest {}", hex::encode(&digest));
-//            }
-                match from_urn(v) {
-                    Ok(r) => {
-                        digest = r;
-                    },
-                    Err(e) => {
-                        debug!("note for entry {:?} is not a digest url", &entry);
-                    },
-                }
-        },
-        None => {},
-    };
-    
-//    if digest.len() == 0 {
-//        digest.resize(64, 0);
-//    }
-
-    digest
+    from_urn(note_s.as_str()).unwrap()
 }
 
 /// Read one or more metadata entries from the `bibtex` source.
@@ -76,9 +47,14 @@ pub fn read_all(mut r: impl Read, digests: &Vec<RecordDigest>) -> Result<Vec<Met
         },
         Err(e) => {
             error!("parse error for biblatex");
-            return Err(ParseError);
+            return Err(ParseError::new("Not a biblatex source"));
         },
     };
+
+    if bib.len() > 1 && digests.len() > 0 {
+        error!("more than one biblatex entry parsed while static digest provided");
+        return Err(ParseError::new("more than one biblatex entry parsed while static digest provided"));
+    }
 
     let mut rr: Vec<MetaData> = vec!();
 
@@ -97,6 +73,8 @@ pub fn read_all(mut r: impl Read, digests: &Vec<RecordDigest>) -> Result<Vec<Met
         });
 
         let mut use_digests: Vec<RecordDigest> = vec!();
+
+        // use clone instead
         let digest = parse_digest(&e);
         match digest {
             RecordDigest::Empty => {
@@ -113,13 +91,6 @@ pub fn read_all(mut r: impl Read, digests: &Vec<RecordDigest>) -> Result<Vec<Met
             RecordDigest::SwarmHash(r) => {
                 use_digests.push(RecordDigest::SwarmHash(r));
             },
-
-//            RecordDigest::Sha512(r) => {
-//                use_digests.push(digest);
-//            },
-//            RecordDigest::MD5(r) => {
-//                use_digests.push(digest);
-//            },
         }
 
         for v in digests {
@@ -127,6 +98,10 @@ pub fn read_all(mut r: impl Read, digests: &Vec<RecordDigest>) -> Result<Vec<Met
         }
         let title = e.title().unwrap();
         let title_s = String::from_chunks(title).unwrap();
+
+        if use_digests.len() == 0 {
+            return Err(ParseError::new("no digests found")); 
+        }
 
         for dd in use_digests.into_iter() {
             let mut m = MetaData::new(title_s.as_str(), authors_s.as_str(), e.entry_type.clone(), dd, None);
@@ -158,6 +133,21 @@ mod tests {
     use super::read_all;
     use crate::digest;
     use env_logger;
+
+    #[test]
+    fn test_embedded_digest() {
+       let biblatex_src = "@article{
+    foo,
+    title={bar},
+    author={Guybrush Threepwood},
+    note={sha512:f7fbba6e0636f890e56fbbf3283e524c6fa3204ae298382d624741d0dc6638326e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7},
+}
+";
+        let digests = vec!();
+        let r = read_all(biblatex_src.as_bytes(), &digests).unwrap();
+
+    }
+
 
     #[test]
     fn test_multi_digest() {
