@@ -9,6 +9,7 @@ use std::path::{
     Path,
     PathBuf,
 };
+use std::str::FromStr;
 use env_logger;
 use clap::{
     App, 
@@ -88,6 +89,15 @@ fn args_setup() -> ArgMatches<'static> {
         .help("Path to operate on")
         .required(true)
         .index(1)
+        );
+    o_apply = o_apply.arg(
+        Arg::with_name("adddigest")
+        .short("d")
+        .long("digest")
+        .help("Additional digest to store")
+        .multiple(true)
+        .takes_value(true)
+        .number_of_values(1)
         );
     o = o.subcommand(o_apply);
 
@@ -252,7 +262,7 @@ fn exec_apply(p: &Path, index_path: &Path, mut extra_digest_types: Vec<DigestTyp
                     Ok(v) => {
                         let f = File::open(&v).unwrap();
                         let m = rdf_read(f);
-                        info!("apply {:?} -> {:?} for {:?}", entry, &m, &digest);
+                        info!("apply {:?} -> {:?}", entry, &m);
                         m.to_xattr(&ep);
                     },
                     Err(e) => {
@@ -340,10 +350,28 @@ fn main() {
 
     let mut r = true;
     match args.subcommand_matches("apply") {
-        Some(v) => {
-            let p = str_to_path(v);
+        Some(arg) => {
+            let p = str_to_path(&arg);
+            let mut digests: Vec<DigestType> = Vec::new();
+            match arg.values_of("adddigest") {
+                Some(r) => {
+                    for digest_str in r {
+                        match DigestType::from_str(&digest_str) {
+                            Ok(digest) => {
+                                info!("using digest type {}", digest_str);
+                                digests.push(digest);
+                            },
+                            Err(e) => {
+                                panic!("invalid digest URN: {:?}", e);
+                            },
+                        }
+                    }
+                },
+                None => {},
+            };
+
             info!("apply from path {:?}", &p);
-            if !exec_apply(p.as_path(), index_dir.as_path(), vec!()) {
+            if !exec_apply(p.as_path(), index_dir.as_path(), digests) {
                 r = false; 
             }
         },

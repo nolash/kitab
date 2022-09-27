@@ -88,8 +88,22 @@ pub fn digests_from_path(filepath: &path::Path, digest_types: &Vec<digest::Diges
 
 #[cfg(feature = "md5")]
 pub fn digest_md5_from_path(filepath: &path::Path) -> digest::RecordDigest {
-    let ctx = md5::Context::new();
-    digest::RecordDigest::MD5(vec!())
+    let mut ctx = md5::Context::new();
+    let mut f = File::open(filepath).unwrap();
+    let mut buf = [0; 512];
+
+    let mut run = true;
+    while run {
+        let c = f.read(&mut buf[..]).unwrap();
+        if c < 512 {
+            run = false;
+        }
+        if c > 0 {
+            ctx.consume(&buf[..c]);
+        }
+    }
+    let d = ctx.compute();
+    digest::RecordDigest::MD5(d.to_vec())
 }
 
 /// Generates the native `sha512` digest of a file.
@@ -503,7 +517,7 @@ impl MetaData {
 
 impl fmt::Debug for MetaData {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", format_args!("title \"{}\" author \"{}\" digest {}", self.title(), self.author(), self.fingerprint()))
+        write!(f, "{}", format_args!("title \"{}\" author \"{}\" digest {}", self.title(), self.author(), self.urn()))
     }
 }
 

@@ -65,7 +65,8 @@ pub enum RdfError {
 pub fn write(entry: &MetaData, w: impl Write) -> Result<usize, std::io::Error> {
     let mut tfmt = TurtleFormatter::new(w);
     
-    let urn_str = format!("URN:sha512:{}", entry.fingerprint());
+    //let urn_str = format!("URN:sha512:{}", entry.fingerprint());
+    let urn_str = format!("URN:{}", entry.urn());
     let urn = Subject::NamedNode(
         NamedNode{
             iri: urn_str.as_str(),

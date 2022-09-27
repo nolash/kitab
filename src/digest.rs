@@ -1,5 +1,6 @@
 use std::marker::Copy;
 use std::fmt;
+use std::str::FromStr;
 
 use crate::error::ParseError;
 
@@ -15,6 +16,23 @@ pub enum DigestType {
     Sha512,
     #[cfg(feature="digest_md5")]
     MD5,
+}
+
+impl FromStr for DigestType {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<DigestType, Self::Err> {
+        match s {
+            "md5" => {
+                return Ok(DigestType::MD5);
+            },
+            "sha512" => {
+                return Ok(DigestType::Sha512);
+            },
+            _ => {
+                return Err(ParseError::new("Unknown digest string"));
+            },
+        };
+    }
 }
 
 /// Encapsulations of supported digests for digest data.
