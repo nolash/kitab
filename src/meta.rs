@@ -7,6 +7,7 @@ use mime::{
 };
 use sha2::{
     Sha512,
+    Sha256,
     Digest,
 };
 use std::fs::{
@@ -76,6 +77,10 @@ pub fn digests_from_path(filepath: &path::Path, digest_types: &Vec<digest::Diges
                 let digest = digest_sha512_from_path(filepath);
                 r.push(digest);
             },
+            digest::DigestType::Sha256 => {
+                let digest = digest_sha256_from_path(filepath);
+                r.push(digest);
+            },
             #[cfg(feature = "md5")]
             digest::DigestType::MD5 => {
                 let digest = digest_md5_from_path(filepath);
@@ -126,6 +131,28 @@ pub fn digest_sha512_from_path(filepath: &path::Path) -> digest::RecordDigest {
     }
     let r = h.finalize().to_vec();
     digest::RecordDigest::Sha512(r)
+}
+
+/// Generates the native `sha256` digest of a file.
+///
+/// # Arguments
+///
+/// * `filepath` - Absolute path to file to calculate digest for.
+pub fn digest_sha256_from_path(filepath: &path::Path) -> digest::RecordDigest {
+    let mut h = Sha256::new();
+    let st = metadata(filepath).unwrap();
+    let bs: u64 = st.st_blksize();
+    let sz: u64 = st.st_size();
+    let mut b: Vec<u8> = vec!(0; bs as usize);
+    let mut f = File::open(filepath).unwrap();
+    let mut i: usize = 0;
+    while i < sz as usize {
+        let c = f.read(&mut b).unwrap();
+        h.update(&b[..c]);
+        i += c;
+    }
+    let r = h.finalize().to_vec();
+    digest::RecordDigest::Sha256(r)
 }
 
 impl MetaData {

@@ -16,6 +16,7 @@ use log::error;
 #[derive(Copy, Clone)]
 pub enum DigestType {
     Sha512,
+    Sha256,
     #[cfg(feature="digest_md5")]
     MD5,
 }
@@ -30,8 +31,11 @@ impl FromStr for DigestType {
             "sha512" => {
                 return Ok(DigestType::Sha512);
             },
+            "sha256" => {
+                return Ok(DigestType::Sha256);
+            },
             _ => {
-                return Err(ParseError::new("Unknown digest string"));
+                return Err(ParseError::new("unknown digest string"));
             },
         };
     }
