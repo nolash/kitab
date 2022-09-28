@@ -1,4 +1,5 @@
 use std::marker::Copy;
+use std::io::Read;
 use std::fmt;
 use std::str::FromStr;
 
@@ -12,6 +13,7 @@ use sha2::{
 
 use log::error;
 
+#[derive(Copy, Clone)]
 pub enum DigestType {
     Sha512,
     #[cfg(feature="digest_md5")]
@@ -35,21 +37,25 @@ impl FromStr for DigestType {
     }
 }
 
+impl DigestType {
+    pub fn digest_for(&self, f: impl Read) -> RecordDigest {
+        RecordDigest::Empty 
+    }
+}
+
 /// Encapsulations of supported digests for digest data.
 pub enum RecordDigest {
     Sha512(Vec<u8>),
     Sha256(Vec<u8>),
     MD5(Vec<u8>),
     SwarmHash(Vec<u8>),
+    EmptyWithType(DigestType),
     Empty,
 }
 
 impl Clone for RecordDigest {
     fn clone(&self) -> RecordDigest {
         match self {
-            RecordDigest::Empty => {
-                RecordDigest::Empty
-            },
             RecordDigest::Sha512(v) => {
                 RecordDigest::Sha512(v.to_vec())
             },
@@ -62,6 +68,9 @@ impl Clone for RecordDigest {
             RecordDigest::SwarmHash(v) => {
                 RecordDigest::SwarmHash(v.to_vec())
             },
+            _ => {
+                RecordDigest::Empty
+            },
         }
     }
 }
@@ -69,9 +78,6 @@ impl Clone for RecordDigest {
 impl RecordDigest {
     pub fn fingerprint(&self) -> Vec<u8> {
         match self {
-            RecordDigest::Empty => {
-                return vec!();
-            },
             RecordDigest::Sha512(v) => {
                 return v.to_vec();
             },
@@ -84,6 +90,9 @@ impl RecordDigest {
             RecordDigest::SwarmHash(v) => {
                 return v.to_vec();
             },
+            _ => {
+                return vec!()
+            },
         }
     }
 
@@ -92,9 +101,6 @@ impl RecordDigest {
     /// TODO: implememt in fmt for digest instead
     pub fn urn(&self) -> String {
         match self {
-            RecordDigest::Empty => {
-                return String::new();
-            },
             RecordDigest::Sha512(v) => {
                 return String::from("sha512:") + hex::encode(&v).as_str();
             },
@@ -106,6 +112,9 @@ impl RecordDigest {
             },
             RecordDigest::SwarmHash(v) => {
                 return hex::encode(&v);
+            },
+            _ => {
+                return String::new();
             },
         }
     }
@@ -139,7 +148,14 @@ pub fn from_urn(urn: &str) -> Result<RecordDigest, ParseError> {
     let mut v = urn.split(":");
     let r = match v.next() {
         Some("sha512") => {
-            let digest_hex = v.next().unwrap();
+            let digest_hex = match v.next() {
+                Some(r) => {
+                    r
+                },
+                None => {
+                    return Err(ParseError::new("not a valid digest urn"));
+                },
+            };
             let digest = hex::decode(digest_hex).unwrap();
             match from_vec(digest) {
                 Ok(vv) => {
@@ -162,7 +178,14 @@ pub fn from_urn(urn: &str) -> Result<RecordDigest, ParseError> {
             RecordDigest::Sha256(digest)
         },
         Some("md5") => {
-            let digest_hex = v.next().unwrap();
+            let digest_hex = match v.next() {
+                Some(r) => {
+                    r
+                },
+                None => {
+                    return Err(ParseError::new("not a valid digest urn"));
+                },
+            };
             let digest = hex::decode(digest_hex).unwrap();
 
             if digest.len() != 16 {

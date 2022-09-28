@@ -77,8 +77,6 @@ pub fn read_all(mut r: impl Read, digests: &Vec<RecordDigest>) -> Result<Vec<Met
         // use clone instead
         let digest = parse_digest(&e);
         match digest {
-            RecordDigest::Empty => {
-            },
             RecordDigest::Sha512(r) => {
                 use_digests.push(RecordDigest::Sha512(r));
             },
@@ -90,6 +88,8 @@ pub fn read_all(mut r: impl Read, digests: &Vec<RecordDigest>) -> Result<Vec<Met
             },
             RecordDigest::SwarmHash(r) => {
                 use_digests.push(RecordDigest::SwarmHash(r));
+            },
+            _ => {
             },
         }
 

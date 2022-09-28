@@ -188,8 +188,8 @@ fn store(index_path: &Path, m: &MetaData) {
     debug!("stored as rdf {:?}", fp);
 }
 
-fn exec_import_xattr(f: &Path, index_path: &Path) -> bool {
-    let m = match MetaData::from_xattr(f) {
+fn exec_import_xattr(f: &Path, index_path: &Path, digests: &Vec<RecordDigest>) -> bool {
+    let mut m = match MetaData::from_xattr(f) {
         Ok(r) => {
             r
         }
@@ -201,7 +201,27 @@ fn exec_import_xattr(f: &Path, index_path: &Path) -> bool {
     debug!("successfully processed xattr import source");
 
     info!("importing xattr source {:?}", &m);
-    store(index_path, &m);
+
+    let mut digest_types: Vec<DigestType> = vec!();
+
+    for v in digests.iter() {
+        match v {
+            RecordDigest::EmptyWithType(digest_typ) => {
+                digest_types.push(*digest_typ);
+            },
+            RecordDigest::Empty => {
+                digest_types.push(DigestType::Sha512);
+            },
+            _ => {
+                warn!("digest specifier {:?} is invalid in xattr import context.", v);
+            },
+        };
+    }
+
+    for v in digests_from_path(f, &digest_types) {
+        m.set_fingerprint(v);
+        store(index_path, &m);
+    }
     true
 }
 
@@ -240,7 +260,7 @@ fn exec_import_biblatex(f: &Path, index_path: &Path, digests: &Vec<RecordDigest>
 
     for m in entries {
         info!("importing biblatex source {:?}", &m);
-        store(index_path, &m);    
+        store(index_path, &m);
     }
 
     true
@@ -282,8 +302,7 @@ fn exec_import(p: &Path, index_path: &Path, digests: Vec<RecordDigest>) {
 
         let fp = entry.path();
         debug!("attempt xattr import {:?}", fp);
-        //if exec_import_xattr(fp, index_path, &digests) {
-        if exec_import_xattr(fp, index_path) {
+        if exec_import_xattr(fp, index_path, &digests) {
             continue;
         }
 
@@ -294,7 +313,6 @@ fn exec_import(p: &Path, index_path: &Path, digests: Vec<RecordDigest>) {
         }
 
         debug!("attempt rdf import {:?}", fp);
-        //if exec_import_rdf(fp, index_path, &digests) {
         if exec_import_rdf(fp, index_path) { 
             continue;
         } 
@@ -334,7 +352,16 @@ fn main() {
                                 digests.push(digest);
                             },
                             Err(e) => {
-                                panic!("invalid digest URN: {:?}", e);
+                                let digest_type = match DigestType::from_str(digest_str) {
+                                    Ok(v) => {
+                                        v
+                                    },
+                                    Err(e) => {
+                                        panic!("invalid digest specifier: {:?}", e);
+                                    },
+                                };
+                                let digest_empty = RecordDigest::EmptyWithType(digest_type);
+                                digests.push(digest_empty);
                             },
                         }
                     }
@@ -356,7 +383,7 @@ fn main() {
             match arg.values_of("adddigest") {
                 Some(r) => {
                     for digest_str in r {
-                        match DigestType::from_str(&digest_str) {
+                        match DigestType::from_str(digest_str.clone()) {
                             Ok(digest) => {
                                 info!("using digest type {}", digest_str);
                                 digests.push(digest);
@@ -378,14 +405,14 @@ fn main() {
         _ => {},
     }
 
-    match args.subcommand_matches("new") {
-        Some(v) => {
-            let p = str_to_path(v);
-            info!("new metadata for path {:?}", &p);
-            if !exec_entry(p.as_path(), index_dir.as_path()) {
-                r = false; 
-            }
-        },
-        _ => {},
-    }
+//    match args.subcommand_matches("new") {
+//        Some(v) => {
+//            let p = str_to_path(v);
+//            info!("new metadata for path {:?}", &p);
+//            if !exec_entry(p.as_path(), index_dir.as_path()) {
+//                r = false; 
+//            }
+//        },
+//        _ => {},
+//    }
 }
