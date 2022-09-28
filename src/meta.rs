@@ -533,6 +533,10 @@ mod tests {
     };
     use crate::digest;
     use env_logger;
+    use crate::dc::{
+        DC_XATTR_TITLE,
+        DC_XATTR_CREATOR,
+    };
 
     #[test]
     fn test_metadata_create() {
@@ -594,14 +598,9 @@ mod tests {
             let f = NamedTempFile::new_in(".").unwrap();
             let fp = f.path();
             write(&f, &[0, 1, 2, 3]);
-            let meta_empty = match MetaData::from_xattr(fp) {
-                Ok(v) => {
-                    v
-                },
-                Err(e) => {
-                    panic!("{:?}", e);
-                },
-            };
+            xattr::set(fp, DC_XATTR_TITLE, "foo".as_bytes());
+            xattr::set(fp, DC_XATTR_CREATOR, "bar".as_bytes());
+            let meta_empty = MetaData::from_xattr(fp).unwrap();
             assert_eq!(meta_empty.mime().unwrap(), "application/octet-stream"); 
         }
     }
