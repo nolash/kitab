@@ -1,0 +1,4 @@
+Retrieved on 2022-04-02
+
+https://www.dublincore.org/specifications/dublin-core/dcmi-terms/dublin_core_terms.rdf
+https://www.dublincore.org/specifications/dublin-core/dcmi-terms/dublin_core_terms.ttl
